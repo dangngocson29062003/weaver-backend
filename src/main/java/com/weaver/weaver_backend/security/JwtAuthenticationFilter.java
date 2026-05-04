@@ -1,5 +1,6 @@
 package com.weaver.weaver_backend.security;
 
+import com.weaver.weaver_backend.common.TokenType;
 import com.weaver.weaver_backend.dto.response.auth.AuthUserResponse;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
 import com.weaver.weaver_backend.util.JwtUtils;
@@ -32,14 +33,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         try {
             String token = parseJwt(request);
-            if (token != null && jwtUtils.isTokenValid(token)) {
-                UUID userId = jwtUtils.getUserId(token);
-                String email = jwtUtils.getEmail(token);
-                String tokenType = jwtUtils.getType(token);
-                AuthUserResponse authUser = new AuthUserResponse(userId, email);
-                if (!"ACCESS_TOKEN".equals(tokenType)) {
+            Claims claims = jwtUtils.extractClaims(token);
+            if (token != null && jwtUtils.isTokenValid(claims)) {
+                TokenType tokenType = jwtUtils.getType(claims);
+                if (tokenType != TokenType.ACCESS_TOKEN) {
                     throw new UnauthorizedException("Invalid access token");
                 }
+                UUID userId = jwtUtils.getUserId(claims);
+                String email = jwtUtils.getEmail(claims);
+                AuthUserResponse authUser = new AuthUserResponse(userId, email);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(authUser, null, null);
                 SecurityContextHolder.getContext().setAuthentication(authentication);

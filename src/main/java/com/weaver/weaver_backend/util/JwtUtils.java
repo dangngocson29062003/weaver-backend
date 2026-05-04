@@ -84,38 +84,33 @@ public class JwtUtils {
         }
     }
 
-    public UUID getUserId(String token) {
-        Claims claims = extractClaims(token);
+    public UUID getUserId(Claims claims) {
         return UUID.fromString(claims.getSubject());
     }
 
-    public String getEmail(String token) {
-        Claims claims = extractClaims(token);
+    public String getEmail(Claims claims) {
         return claims.get("email", String.class);
     }
 
-    public String getType(String token) {
-        Claims claims = extractClaims(token);
-        return claims.get("type", String.class);
+    public TokenType getType(Claims claims) {
+        String typeStr = claims.get("type", String.class);
+        return TokenType.valueOf(typeStr);
     }
 
-    public Date getExpiration(String token) {
-        Claims claims = extractClaims(token);
+    public Date getExpiration(Claims claims) {
         return claims.getExpiration();
     }
 
-    public String getJwtId(String token) {
-        Claims claims = extractClaims(token);
+    public String getJwtId(Claims claims) {
         return claims.getId();
     }
 
-    public boolean isTokenValid(String token) {
-        Claims claims = extractClaims(token);
-        return claims != null && !isTokenExpired(token) && !isTokenBlacklisted(claims.getId());
+    public boolean isTokenValid(Claims claims) {
+        return claims != null && !isTokenExpired(claims) && !isTokenBlacklisted(claims.getId());
     }
 
-    private boolean isTokenExpired(String token) {
-        return getExpiration(token).before(new Date());
+    private boolean isTokenExpired(Claims claims) {
+        return getExpiration(claims).before(new Date());
     }
 
     public boolean isTokenBlacklisted(String jwtId) {
