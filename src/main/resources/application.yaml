@@ -1,0 +1,49 @@
+server:
+  port: ${PORT}
+
+spring:
+  application:
+    name: weaver
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      max-lifetime: 300000
+      idle-timeout: 60000
+      validation-timeout: 5000
+      minimum-idle: 5
+      maximum-pool-size: 20
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
+  two-fa-expiration: ${JWT_TWO_FA_EXPIRATION}
+app:
+  client-url: ${WEB_CLIENT_URL}
+  server-url: ${WEB_SERVER_URL}
