@@ -78,7 +78,6 @@ public class AuthController {
         cookie.setHttpOnly(true);
         cookie.setSecure(false);
         cookie.setMaxAge(0);
-
         response.addCookie(cookie);
 
         return ApiResponse.<Void>builder()

@@ -23,23 +23,31 @@ import java.util.Map;
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
     private static final Logger logger = LoggerFactory.getLogger(CustomAuthenticationEntryPoint.class);
     private final ObjectMapper objectMapper;
+
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
             throws IOException, ServletException {
         logger.error("Unauthorized error: {}", authException.getMessage());
 
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+
+        String authHeader = request.getHeader("Authorization");
+        String message;
+        // No token provided
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            message = "Please login";
+        else
+            message = "Invalid or expired token";
 
         ApiResponse<?> apiResponse = ApiResponse.error(
                 401,
                 HttpStatus.UNAUTHORIZED,
-                authException.getMessage()
+                message
         );
 
         response.getWriter().write(
-                objectMapper.writeValueAsString(apiResponse)
-        );
+                objectMapper.writeValueAsString(apiResponse));
     }
 
 }
