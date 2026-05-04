@@ -13,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import java.text.ParseException;
 
@@ -22,7 +24,7 @@ import java.text.ParseException;
 public class AuthController {
 
     private final IAuthService iAuthService;
-
+    private final SpringTemplateEngine templateEngine;
     @PostMapping("/login")
     ApiResponse<LoginResponse> login(@RequestBody @Valid LoginRequest request, HttpServletResponse response) {
         LoginResponse data = iAuthService.login(request);
@@ -39,7 +41,8 @@ public class AuthController {
                 .data(data)
                 .build();
     }
-    @PostMapping("/2fa")
+
+    @GetMapping("/2fa")
     ApiResponse<LoginResponse> verifyTwoFA(HttpServletResponse response, @RequestParam int OTP, @RequestHeader("twoFAToken") String token) {
         LoginResponse data = iAuthService.verifyTwoFA(token, OTP);
         Cookie cookie = new Cookie("refresh_token", data.refreshToken());
@@ -65,7 +68,11 @@ public class AuthController {
                 .data(data)
                 .build();
     }
-
+    @GetMapping("/verify-email")
+    public ApiResponse<LoginResponse> verifyEmail(@RequestParam("token") String token) {
+        LoginResponse data = iAuthService.verifyEmail(token);
+        return ApiResponse.success(data, "Account verified and logged in successfully!");
+    }
     @PostMapping("/logout")
     ApiResponse<Void> logout(
             @CookieValue("refresh_token") String refreshToken,

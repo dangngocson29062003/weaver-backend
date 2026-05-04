@@ -12,5 +12,8 @@ public interface IUserService {
     UserDetailResponse getMe(UUID userId);
 
     TwoFAResponse setupTwoFA(UUID userId);
+
     UserDetailResponse toggle2FA(UUID userId, int OTP);
+
+
 }

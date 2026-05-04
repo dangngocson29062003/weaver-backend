@@ -45,7 +45,9 @@ public class User implements UserDetails {
     @Column(name = "two_fa_secret")
     private String twoFaSecret;
 
-    private Boolean emailVerified;
+    @Column(name = "email_verified")
+    @Builder.Default
+    private Boolean emailVerified = false;
 
     @Enumerated(EnumType.STRING)
     private UserStatus userStatus;
