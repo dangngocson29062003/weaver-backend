@@ -29,6 +29,17 @@ spring:
     redis:
       host: localhost
       port: 6379
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_APP_USERNAME}
+    password: ${EMAIL_APP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   security:
     oauth2:
       client:
@@ -39,11 +50,17 @@ spring:
             scope:
               - email
               - profile
+  rabbitmq:
+    host: "localhost"
+    port: 5672
+    username: "guest"
+    password: "guest"
 jwt:
   secret-key: ${JWT_SECRET_KEY}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
   two-fa-expiration: ${JWT_TWO_FA_EXPIRATION}
+  verification-expiration: ${JWT_VERIFICATION_EXPIRATION}
 app:
   client-url: ${WEB_CLIENT_URL}
   server-url: ${WEB_SERVER_URL}

@@ -40,4 +40,5 @@ public class UserController {
         return ApiResponse.success(data, data.twoFaEnabled() ? "The 2FA enabled successfully" : "The 2FA disabled successfully");
     }
 
+
 }

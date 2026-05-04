@@ -3,9 +3,11 @@ package com.weaver.weaver_backend.service.impl;
 import com.weaver.weaver_backend.common.AuthProvider;
 import com.weaver.weaver_backend.common.TokenType;
 import com.weaver.weaver_backend.common.UserStatus;
+import com.weaver.weaver_backend.configuration.RabbitConfiguration;
 import com.weaver.weaver_backend.dto.request.auth.CreateUserRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginViaOAuthRequest;
+import com.weaver.weaver_backend.dto.request.email.EmailRequest;
 import com.weaver.weaver_backend.dto.response.TokenResponse;
 import com.weaver.weaver_backend.dto.response.auth.CreateUserResponse;
 import com.weaver.weaver_backend.dto.response.auth.LoginResponse;
@@ -16,14 +18,17 @@ import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
 import com.weaver.weaver_backend.mapper.UserMapper;
 import com.weaver.weaver_backend.repository.UserRepository;
+import com.weaver.weaver_backend.service.IEmailService;
 import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.service.IAuthService;
 import com.weaver.weaver_backend.service.IRedisTokenService;
 import com.weaver.weaver_backend.util.JwtUtils;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,7 +48,7 @@ public class AuthServiceImpl implements IAuthService {
     private final UserRepository userRepository;
     private final IRedisTokenService redisTokenService;
     private final HttpServletRequest httpServletRequest;
-
+    private final RabbitTemplate rabbitTemplate;
     @Override
     public LoginResponse login(LoginRequest request) {
         String email = request.email();
@@ -52,6 +57,40 @@ public class AuthServiceImpl implements IAuthService {
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new BadRequestException("Invalid email or password");
         }
+        return handleLoginSuccess(user);
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse verifyEmail(String token) {
+        Claims claims = jwtUtils.extractClaims(token);
+        if (claims == null || !jwtUtils.isTokenValid(claims)) {
+            throw new BadRequestException("Token is invalid or expired");
+        }
+        TokenType tokenType = jwtUtils.getType(claims);
+        if (tokenType != TokenType.VERIFICATION_TOKEN) {
+            throw new BadRequestException("Invalid token type");
+        }
+        UUID userId = jwtUtils.getUserId(claims);
+        String email = jwtUtils.getEmail(claims);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (!user.getEmail().equals(email)) {
+            throw new UnauthorizedException("Email mismatch");
+        }
+        if (!user.getEmailVerified()) {
+            user.setEmailVerified(true);
+            user.setUserStatus(UserStatus.ACTIVE);
+            userRepository.save(user);
+        }
+        String jwtId = jwtUtils.getJwtId(claims);
+        long remainingTime = claims.getExpiration().getTime() - System.currentTimeMillis();
+        redisTokenService.saveToken(RedisToken.builder()
+                .jwtId(jwtId)
+                .userId(user.getId())
+                .expiration(remainingTime > 0 ? remainingTime : 1)
+                .build());
+        log.info("User {} verified email successfully", email);
         return handleLoginSuccess(user);
     }
 
@@ -95,7 +134,13 @@ public class AuthServiceImpl implements IAuthService {
         user.setProvider(AuthProvider.LOCAL);
         user.setUserStatus(UserStatus.PENDING);
         try {
-            userRepository.save(user);
+            user = userRepository.save(user);
+            EmailRequest emailRequest = new EmailRequest(user.getId(), user.getEmail());
+            rabbitTemplate.convertAndSend(
+                    RabbitConfiguration.EMAIL_EXCHANGE,
+                    RabbitConfiguration.EMAIL_ROUTING_KEY,
+                    emailRequest
+            );
         } catch (DataIntegrityViolationException exception) {
             log.error("User already exists");
             throw new BadRequestException("User already exists");

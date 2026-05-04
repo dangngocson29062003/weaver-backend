@@ -2,22 +2,28 @@ package com.weaver.weaver_backend.service.impl;
 
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 
+import com.weaver.weaver_backend.common.TokenType;
+import com.weaver.weaver_backend.common.UserStatus;
 import com.weaver.weaver_backend.dto.response.TwoFAResponse;
 import com.weaver.weaver_backend.dto.response.auth.UserDetailResponse;
+import com.weaver.weaver_backend.entity.RedisToken;
 import com.weaver.weaver_backend.entity.User;
 import com.weaver.weaver_backend.exception.BadRequestException;
 import com.weaver.weaver_backend.exception.NotFoundException;
+import com.weaver.weaver_backend.exception.UnauthorizedException;
 import com.weaver.weaver_backend.mapper.UserMapper;
 import com.weaver.weaver_backend.repository.UserRepository;
 import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.service.IRedisTokenService;
 import com.weaver.weaver_backend.service.IUserService;
 import com.weaver.weaver_backend.util.JwtUtils;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.UUID;
 
 @Service
