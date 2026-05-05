@@ -1,15 +1,18 @@
 package com.weaver.weaver_backend.util;
 
 import com.weaver.weaver_backend.common.TokenType;
+import com.weaver.weaver_backend.common.UserStatus;
 import com.weaver.weaver_backend.dto.response.TokenResponse;
 import com.weaver.weaver_backend.entity.User;
 import com.weaver.weaver_backend.exception.GlobalExceptionHandler;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
+import com.weaver.weaver_backend.repository.UserRepository;
 import com.weaver.weaver_backend.service.IRedisTokenService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,6 +45,8 @@ public class JwtUtils {
 
     private final IRedisTokenService iRedisTokenService;
 
+
+
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
@@ -59,6 +64,8 @@ public class JwtUtils {
                 .setId(jwtID)
                 .claim("email", user.getEmail())
                 .claim("type", tokenType.name())
+                .claim("verified", user.getEmailVerified())
+                .claim("status", user.getUserStatus())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
@@ -95,10 +102,16 @@ public class JwtUtils {
     public String getEmail(Claims claims) {
         return claims.get("email", String.class);
     }
-
+    public Boolean getVerified(Claims claims) {
+        return claims.get("verified", Boolean.class);
+    }
+    public UserStatus getStatus(Claims claims) {
+        String status = claims.get("status", String.class);
+        return UserStatus.valueOf(status);
+    }
     public TokenType getType(Claims claims) {
-        String typeStr = claims.get("type", String.class);
-        return TokenType.valueOf(typeStr);
+        String type = claims.get("type", String.class);
+        return TokenType.valueOf(type);
     }
 
     public Date getExpiration(Claims claims) {

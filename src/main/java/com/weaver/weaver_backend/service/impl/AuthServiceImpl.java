@@ -3,11 +3,10 @@ package com.weaver.weaver_backend.service.impl;
 import com.weaver.weaver_backend.common.AuthProvider;
 import com.weaver.weaver_backend.common.TokenType;
 import com.weaver.weaver_backend.common.UserStatus;
-import com.weaver.weaver_backend.configuration.RabbitConfiguration;
 import com.weaver.weaver_backend.dto.request.auth.CreateUserRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginViaOAuthRequest;
-import com.weaver.weaver_backend.dto.request.email.EmailRequest;
+import com.weaver.weaver_backend.dto.request.rabbitmq.EmailRequest;
 import com.weaver.weaver_backend.dto.response.TokenResponse;
 import com.weaver.weaver_backend.dto.response.auth.CreateUserResponse;
 import com.weaver.weaver_backend.dto.response.auth.LoginResponse;
@@ -17,8 +16,8 @@ import com.weaver.weaver_backend.exception.BadRequestException;
 import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
 import com.weaver.weaver_backend.mapper.UserMapper;
+import com.weaver.weaver_backend.mq.RabbitMQProducer;
 import com.weaver.weaver_backend.repository.UserRepository;
-import com.weaver.weaver_backend.service.IEmailService;
 import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.service.IAuthService;
 import com.weaver.weaver_backend.service.IRedisTokenService;
@@ -28,7 +27,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,14 +39,23 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j(topic = "AUTHENTICATION-SERVICE")
 public class AuthServiceImpl implements IAuthService {
+
     private final GoogleAuthenticatorService ggAuthService;
+
     private final JwtUtils jwtUtils;
+
     private final UserMapper userMapper;
+
     private final PasswordEncoder passwordEncoder;
+
     private final UserRepository userRepository;
+
     private final IRedisTokenService redisTokenService;
+
     private final HttpServletRequest httpServletRequest;
-    private final RabbitTemplate rabbitTemplate;
+
+    private final RabbitMQProducer rabbitMQProducer;
+
     @Override
     public LoginResponse login(LoginRequest request) {
         String email = request.email();
@@ -56,6 +63,10 @@ public class AuthServiceImpl implements IAuthService {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new BadRequestException("Invalid email or password");
+        }
+        if(!user.getEmailVerified()) {
+            EmailRequest emailRequest = new EmailRequest(user.getId(), user.getEmail());
+            rabbitMQProducer.sendVerifiedEmail(emailRequest);
         }
         return handleLoginSuccess(user);
     }
@@ -128,6 +139,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
+    @Transactional
     public CreateUserResponse createUser(CreateUserRequest request) {
         User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.password()));
@@ -136,11 +148,7 @@ public class AuthServiceImpl implements IAuthService {
         try {
             user = userRepository.save(user);
             EmailRequest emailRequest = new EmailRequest(user.getId(), user.getEmail());
-            rabbitTemplate.convertAndSend(
-                    RabbitConfiguration.EMAIL_EXCHANGE,
-                    RabbitConfiguration.EMAIL_ROUTING_KEY,
-                    emailRequest
-            );
+            rabbitMQProducer.sendVerifiedEmail(emailRequest);
         } catch (DataIntegrityViolationException exception) {
             log.error("User already exists");
             throw new BadRequestException("User already exists");

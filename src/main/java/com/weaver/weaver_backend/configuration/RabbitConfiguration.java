@@ -14,7 +14,8 @@ public class RabbitConfiguration {
     public static final String EMAIL_QUEUE = "email.queue";
     public static final String EMAIL_EXCHANGE = "email.exchange";
     public static final String EMAIL_ROUTING_KEY = "email.routing.key";
-
+    public static final String NOTI_QUEUE = "notification.queue";
+    public static final String NOTI_ROUTING_KEY = "notification.routing.key";
     @Bean
     public Queue emailQueue() {
         return new Queue(EMAIL_QUEUE);
