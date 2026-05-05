@@ -11,25 +11,39 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitConfiguration {
+    // Các hằng số cho Email
+    public static final String APP_EXCHANGE = "app.exchange";
     public static final String EMAIL_QUEUE = "email.queue";
-    public static final String EMAIL_EXCHANGE = "email.exchange";
     public static final String EMAIL_ROUTING_KEY = "email.routing.key";
+
     public static final String NOTI_QUEUE = "notification.queue";
     public static final String NOTI_ROUTING_KEY = "notification.routing.key";
+
     @Bean
     public Queue emailQueue() {
-        return new Queue(EMAIL_QUEUE);
+        return new Queue(EMAIL_QUEUE, true);
+    }
+
+    @Bean
+    public Queue notiQueue() {
+        return new Queue(NOTI_QUEUE, true);
     }
 
     @Bean
     public TopicExchange emailExchange() {
-        return new TopicExchange(EMAIL_EXCHANGE);
+        return new TopicExchange(APP_EXCHANGE);
     }
 
     @Bean
-    public Binding binding(Queue emailQueue, TopicExchange emailExchange) {
+    public Binding emailBinding(Queue emailQueue, TopicExchange emailExchange) {
         return BindingBuilder.bind(emailQueue).to(emailExchange).with(EMAIL_ROUTING_KEY);
     }
+
+    @Bean
+    public Binding notiBinding(Queue notiQueue, TopicExchange emailExchange) {
+        return BindingBuilder.bind(notiQueue).to(emailExchange).with(NOTI_ROUTING_KEY);
+    }
+
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();

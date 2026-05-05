@@ -1,4 +1,4 @@
-package com.weaver.weaver_backend.dto.response.auth;
+package com.weaver.weaver_backend.dto.response.user;
 
 import com.weaver.weaver_backend.common.UserStatus;
 import lombok.Builder;
