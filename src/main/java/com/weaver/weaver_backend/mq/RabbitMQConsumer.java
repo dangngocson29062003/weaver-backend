@@ -2,7 +2,10 @@ package com.weaver.weaver_backend.mq;
 
 import com.weaver.weaver_backend.configuration.RabbitConfiguration;
 import com.weaver.weaver_backend.dto.request.rabbitmq.EmailRequest;
+import com.weaver.weaver_backend.dto.request.rabbitmq.NotificationRequest;
+import com.weaver.weaver_backend.entity.Notification;
 import com.weaver.weaver_backend.entity.User;
+import com.weaver.weaver_backend.repository.NotificationRepository;
 import com.weaver.weaver_backend.repository.UserRepository;
 import com.weaver.weaver_backend.service.IEmailService;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 public class RabbitMQConsumer {
     private final IEmailService emailService;
     private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
 
     @RabbitListener(queues = RabbitConfiguration.EMAIL_QUEUE)
     public void handleSendWelcomeEmail(EmailRequest request) {
@@ -27,6 +31,21 @@ public class RabbitMQConsumer {
             log.info("Email sent via RabbitMQ for: {}", request.email());
         } catch (Exception e) {
             log.error("Error processing email queue: ", e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitConfiguration.NOTI_QUEUE)
+    public void handleNotification(NotificationRequest request) {
+        User user = userRepository.findById(request.userId()).orElse(null);
+        if (user != null) {
+            Notification notification = Notification.builder()
+                    .recipient(user)
+                    .title(request.title())
+                    .message(request.message())
+                    .type(request.type())
+                    .build();
+            notificationRepository.save(notification);
+
         }
     }
 }

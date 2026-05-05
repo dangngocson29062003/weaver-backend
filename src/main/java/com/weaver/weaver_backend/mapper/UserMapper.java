@@ -3,7 +3,7 @@ package com.weaver.weaver_backend.mapper;
 import com.weaver.weaver_backend.dto.request.auth.CreateUserRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginViaOAuthRequest;
 import com.weaver.weaver_backend.dto.response.auth.CreateUserResponse;
-import com.weaver.weaver_backend.dto.response.auth.UserDetailResponse;
+import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
 import com.weaver.weaver_backend.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
