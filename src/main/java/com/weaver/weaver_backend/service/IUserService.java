@@ -1,11 +1,11 @@
 package com.weaver.weaver_backend.service;
 
 
-import com.nimbusds.jose.JOSEException;
 import com.weaver.weaver_backend.dto.response.TwoFAResponse;
-import com.weaver.weaver_backend.dto.response.auth.UserDetailResponse;
+import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
+import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
 
-import java.text.ParseException;
+import java.util.List;
 import java.util.UUID;
 
 public interface IUserService {
@@ -15,5 +15,6 @@ public interface IUserService {
 
     UserDetailResponse toggle2FA(UUID userId, int OTP);
 
+    List<NotificationResponse>  getNotifications(UUID userId);
 
 }
