@@ -1,8 +1,12 @@
 package com.weaver.weaver_backend.security;
 
 import com.weaver.weaver_backend.common.TokenType;
+import com.weaver.weaver_backend.common.UserStatus;
 import com.weaver.weaver_backend.dto.response.auth.AuthUserResponse;
+import com.weaver.weaver_backend.entity.User;
+import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
+import com.weaver.weaver_backend.repository.UserRepository;
 import com.weaver.weaver_backend.util.JwtUtils;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -15,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -24,7 +29,7 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
-
+    private final HandlerExceptionResolver handlerExceptionResolver;
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -33,23 +38,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         try {
             String token = parseJwt(request);
-            Claims claims = jwtUtils.extractClaims(token);
-            if (token != null && jwtUtils.isTokenValid(claims)) {
-                TokenType tokenType = jwtUtils.getType(claims);
-                if (tokenType != TokenType.ACCESS_TOKEN) {
-                    throw new UnauthorizedException("Invalid access token");
+            if(token != null) {
+                Claims claims = jwtUtils.extractClaims(token);
+                if (jwtUtils.isTokenValid(claims)) {
+                    TokenType tokenType = jwtUtils.getType(claims);
+                    if (tokenType != TokenType.ACCESS_TOKEN) {
+                        throw new UnauthorizedException("Invalid access token");
+                    }
+                    UUID userId = jwtUtils.getUserId(claims);
+                    String email = jwtUtils.getEmail(claims);
+                    Boolean verified = jwtUtils.getVerified(claims);
+                    if (!verified) {
+                        throw new UnauthorizedException("Please verify your email");
+                    }
+                    UserStatus status = jwtUtils.getStatus(claims);
+                    if (status == UserStatus.INACTIVE) {
+                        throw new UnauthorizedException("User locked");
+                    }
+                    AuthUserResponse authUser = new AuthUserResponse(userId, email);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(authUser, null, null);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-                UUID userId = jwtUtils.getUserId(claims);
-                String email = jwtUtils.getEmail(claims);
-                AuthUserResponse authUser = new AuthUserResponse(userId, email);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(authUser, null, null);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
+            filterChain.doFilter(request, response);
         } catch (Exception ex) {
             logger.error("Cannot set user authentication: {}", ex);
+            handlerExceptionResolver.resolveException(request, response, null, ex);
         }
-        filterChain.doFilter(request, response);
     }
 
     private String parseJwt(HttpServletRequest request) {

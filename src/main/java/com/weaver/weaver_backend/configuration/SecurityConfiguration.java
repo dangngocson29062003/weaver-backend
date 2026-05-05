@@ -24,7 +24,6 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/auth/**",
-            "/logo.png"
     };
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
@@ -56,5 +55,4 @@ public class SecurityConfiguration {
                 .securityContext(context -> context.requireExplicitSave(false))
                 .build();
     }
-
 }

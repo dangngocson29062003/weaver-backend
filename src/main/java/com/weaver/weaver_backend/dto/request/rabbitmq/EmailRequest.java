@@ -1,4 +1,4 @@
-package com.weaver.weaver_backend.dto.request.email;
+package com.weaver.weaver_backend.dto.request.rabbitmq;
 
 import java.util.UUID;
 
