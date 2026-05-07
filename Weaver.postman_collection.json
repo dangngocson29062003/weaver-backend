@@ -1,0 +1,1236 @@
+{
+  "info": {
+    "_postman_id": "1bdb675d-e238-40ed-ad49-77d14d97edb0",
+    "name": "Weaver",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "45000291",
+    "_collection_link": "https://go.postman.co/collection/45000291-1bdb675d-e238-40ed-ad49-77d14d97edb0?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"dangngocson29062003@gmail.com\",\r\n    \"password\": \"sondang2906\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/api/v1/auth/register",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successfully Login\", () => {\r",
+                  "    pm.response.to.have.status(200)\r",
+                  "    const response = pm.response.json()\r",
+                  "    const {accessToken, refreshToken, twoFAToken} = response.data\r",
+                  "\r",
+                  "    pm.environment.set(\"access_token\", accessToken)\r",
+                  "    pm.environment.set(\"refresh_token\", refreshToken)\r",
+                  "    pm.environment.set(\"two_FA_token\", twoFAToken)\r",
+                  "})"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Beaer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI4NjUyMGVjMy1mMDBlLTQ0ZjItYmVjYS00Nzc0ZjdlZDJlNWYiLCJlbWFpbCI6ImRhbmduZ29jc29uMjkwNjIwMDNAZ21haWwuY29tIiwiaWF0IjoxNzcyMDA1NzY0LCJleHAiOjE3NzIwMDY2NjR9.wj__3tsGtFsN4u56PY0oCcyQx4uSkTXbKiQC4-OoamE",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"dangngocson29062003@gmail.com\",\r\n    \"password\": \"sondang2906\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/api/v1/auth/login",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/api/v1/auth/refresh-token",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh-token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify 2FA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successfully Login\", () => {\r",
+                  "    pm.response.to.have.status(200)\r",
+                  "    const response = pm.response.json()\r",
+                  "    const {accessToken, refreshToken, twoFAToken} = response.data\r",
+                  "\r",
+                  "    pm.environment.set(\"access_token\", accessToken)\r",
+                  "    pm.environment.set(\"refresh_token\", refreshToken)\r",
+                  "    pm.environment.set(\"two_FA_token\", twoFAToken)\r",
+                  "})"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "twoFAToken",
+                "value": "{{two_FA_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{host}}/api/v1/auth/2fa?OTP=105655",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "2fa"
+              ],
+              "query": [
+                {
+                  "key": "OTP",
+                  "value": "105655"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successfully Login\", () => {\r",
+                  "    pm.response.to.have.status(200)\r",
+                  "    const response = pm.response.json()\r",
+                  "    const {accessToken, refreshToken, twoFAToken} = response.data\r",
+                  "\r",
+                  "    pm.environment.set(\"access_token\", accessToken)\r",
+                  "    pm.environment.set(\"refresh_token\", refreshToken)\r",
+                  "    pm.environment.set(\"two_FA_token\", twoFAToken)\r",
+                  "})"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/api/v1/auth/verify-email?token=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhMWI4MmRkZC1iMThjLTRkNzctYWM2NS0yOTdiM2U3NzRiNTkiLCJqdGkiOiJiYWFlZGJkZS00YzQ4LTQzZWMtOTM0OC1mMTBkY2FjNWFlNzQiLCJlbWFpbCI6ImRhbmduZ29jc29uMjkwNjIwMDNAZ21haWwuY29tIiwidHlwZSI6IlZFUklGSUNBVElPTl9UT0tFTiIsImlhdCI6MTc3NzkyMTk3MCwiZXhwIjoxNzc3OTIyMDYwfQ.TYOxpCbfo9yBChIjL-D0c7uk9D790ymP6KQrr2Z2Xmy3FhnZ9unT90OROjF-mPtGZhBwsvz_k5M5z6RbF-K6DQ",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "verify-email"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhMWI4MmRkZC1iMThjLTRkNzctYWM2NS0yOTdiM2U3NzRiNTkiLCJqdGkiOiJiYWFlZGJkZS00YzQ4LTQzZWMtOTM0OC1mMTBkY2FjNWFlNzQiLCJlbWFpbCI6ImRhbmduZ29jc29uMjkwNjIwMDNAZ21haWwuY29tIiwidHlwZSI6IlZFUklGSUNBVElPTl9UT0tFTiIsImlhdCI6MTc3NzkyMTk3MCwiZXhwIjoxNzc3OTIyMDYwfQ.TYOxpCbfo9yBChIjL-D0c7uk9D790ymP6KQrr2Z2Xmy3FhnZ9unT90OROjF-mPtGZhBwsvz_k5M5z6RbF-K6DQ"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Task",
+      "item": [
+        {
+          "name": "Get Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/projects/be2bd489-1bec-45da-a5d8-45dc24f53d0c/tasks",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects",
+                "be2bd489-1bec-45da-a5d8-45dc24f53d0c",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "priority",
+                  "value": "NORMAL",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"task 1\",\r\n    \"description\": \"\",\r\n    \"startedAt\": \"2026-12-31T23:59:59.999Z\",\r\n    \"endedAt\": \"2026-12-31T23:59:59.999Z\",\r\n    \"taskType\": \"TASK\",\r\n    \"priority\": \"URGENT\",\r\n    \"projectId\": \"be2bd489-1bec-45da-a5d8-45dc24f53d0c\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/projects/be2bd489-1bec-45da-a5d8-45dc24f53d0c/tasks",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects",
+                "be2bd489-1bec-45da-a5d8-45dc24f53d0c",
+                "tasks"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Task",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/tasks/11",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "11"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI4NjUyMGVjMy1mMDBlLTQ0ZjItYmVjYS00Nzc0ZjdlZDJlNWYiLCJlbWFpbCI6ImRhbmduZ29jc29uMjkwNjIwMDNAZ21haWwuY29tIiwiaWF0IjoxNzcyMDk2MDk0LCJleHAiOjE3NzIwOTY5OTR9.bJHyFrVwJGK776KvJARLpMffQaJ8SyvlNBs795vEeZ4",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"Demo 2\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/tasks/be2bd489-1bec-45da-a5d8-45dc24f53d0c/12",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "be2bd489-1bec-45da-a5d8-45dc24f53d0c",
+                "12"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/tasks/15",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "15"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{access_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Project",
+      "item": [
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"FACEBOOK - Backend\",\r\n    \"startDate\": \"2026-03-22T14:33:35.433857700Z\",\r\n    \"endDate\": \"2026-03-22T14:33:35.433857700Z\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/projects",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Projects",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": []
+            },
+            "url": {
+              "raw": "{{host}}/projects?sortBy=created&limit=9",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "created",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "Backend",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "9",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\":\"K Office\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/projects/8cc01134-0140-47d2-b1a3-7c006f943c58",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects",
+                "8cc01134-0140-47d2-b1a3-7c006f943c58"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Project",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/projects/be2bd489-1bec-45da-a5d8-45dc24f53d0c",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects",
+                "be2bd489-1bec-45da-a5d8-45dc24f53d0c"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "New Request",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/projects/c1767a20-1367-43a2-a0ac-c515c2b661fa/bin",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects",
+                "c1767a20-1367-43a2-a0ac-c515c2b661fa",
+                "bin"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deleted Projects",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{access_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Project Member",
+      "item": [
+        {
+          "name": "Invite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI4NjUyMGVjMy1mMDBlLTQ0ZjItYmVjYS00Nzc0ZjdlZDJlNWYiLCJlbWFpbCI6ImRhbmduZ29jc29uMjkwNjIwMDNAZ21haWwuY29tIiwiaWF0IjoxNzcyMDkyMTcyLCJleHAiOjE3NzIwOTMwNzJ9.PbETbZfX5gk9t5geYFhsc_uejgr242Spnl3jG6cjiwE",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"userId\": \"5955c0ca-7207-4f2e-8b90-126d8bf7eb63\",\r\n    \"role\": \"CONTRIBUTOR\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/projects/be2bd489-1bec-45da-a5d8-45dc24f53d0c/members",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects",
+                "be2bd489-1bec-45da-a5d8-45dc24f53d0c",
+                "members"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"newRole\": \"CONTRIBUTOR\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/projects/be2bd489-1bec-45da-a5d8-45dc24f53d0c/members/2b913efe-e9c7-459c-8dc5-fb9416b029a9",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects",
+                "be2bd489-1bec-45da-a5d8-45dc24f53d0c",
+                "members",
+                "2b913efe-e9c7-459c-8dc5-fb9416b029a9"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/projects/be2bd489-1bec-45da-a5d8-45dc24f53d0c/members",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "projects",
+                "be2bd489-1bec-45da-a5d8-45dc24f53d0c",
+                "members"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{access_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Task Assignment",
+      "item": [
+        {
+          "name": "Assign",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "\r\n{\r\n    \"userId\": [\"86520ec3-f00e-44f2-beca-4774f7ed2e5f\", \"2b913efe-e9c7-459c-8dc5-fb9416b029a9\"]\r\n\r\n}   \r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/tasks/11/assignments",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "11",
+                "assignments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unassign",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/tasks/11/assignments/2b913efe-e9c7-459c-8dc5-fb9416b029a9",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "11",
+                "assignments",
+                "2b913efe-e9c7-459c-8dc5-fb9416b029a9"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{access_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Message",
+      "item": [
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/messages/be2bd489-1bec-45da-a5d8-45dc24f53d0c",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "messages",
+                "be2bd489-1bec-45da-a5d8-45dc24f53d0c"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{access_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comment",
+      "item": [
+        {
+          "name": "Comment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"content\": \"Test Comment\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/tasks/e7458d63-e92f-4e34-aff7-28c341eb7655/comments",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "e7458d63-e92f-4e34-aff7-28c341eb7655",
+                "comments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Comments",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"content\": \"Test Comment\"\r\n}"
+            },
+            "url": {
+              "raw": "{{host}}/tasks/11/comments",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "11",
+                "comments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"content\": \"Update content\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}/tasks/11/comments/5",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "11",
+                "comments",
+                "5"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{access_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "File",
+      "item": [
+        {
+          "name": "Upload",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "uuid": "b37e2de6-9834-4094-b7ef-26fc49890d29",
+                  "src": "/C:/Users/ACER/Downloads/Fullstack_Interview_Questions.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{host}}/tasks/11/files",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "11",
+                "files"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/tasks/11/files/8394c8f0-9466-4276-856e-e329f58acac1",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "11",
+                "files",
+                "8394c8f0-9466-4276-856e-e329f58acac1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Files",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/tasks/11/files",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "tasks",
+                "11",
+                "files"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{access_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/users/search?query=n",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "users",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "n"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/api/v1/users/me",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set up 2FA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/api/v1/users/2fa/setup",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "2fa",
+                "setup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle 2FA",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/api/v1/users/2fa?OTP=772648",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "2fa"
+              ],
+              "query": [
+                {
+                  "key": "OTP",
+                  "value": "772648"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/api/v1/auth/logout",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Notification",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/api/v1/users/notifications",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "notifications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{access_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

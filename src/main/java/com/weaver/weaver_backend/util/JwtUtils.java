@@ -43,6 +43,8 @@ public class JwtUtils {
     @Value("${jwt.verification-expiration}")
     private long verificationExpiration;
 
+    @Value("${JWT_FORGOT_PASSWORD_EXPIRATION}")
+    private long forgotPasswordExpiration;
     private final IRedisTokenService iRedisTokenService;
 
 
@@ -57,6 +59,7 @@ public class JwtUtils {
             case REFRESH_TOKEN -> refreshTokenExpiration;
             case TWOFA_TOKEN -> twoFaExpiration;
             case VERIFICATION_TOKEN -> verificationExpiration;
+            case FORGOT_PASSWORD_TOKEN -> forgotPasswordExpiration;
         };
         String jwtID = UUID.randomUUID().toString();
         String token = Jwts.builder()
