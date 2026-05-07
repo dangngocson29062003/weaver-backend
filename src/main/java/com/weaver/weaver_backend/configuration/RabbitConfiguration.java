@@ -30,18 +30,18 @@ public class RabbitConfiguration {
     }
 
     @Bean
-    public TopicExchange emailExchange() {
+    public TopicExchange appExchange() {
         return new TopicExchange(APP_EXCHANGE);
     }
 
     @Bean
-    public Binding emailBinding(Queue emailQueue, TopicExchange emailExchange) {
-        return BindingBuilder.bind(emailQueue).to(emailExchange).with(EMAIL_ROUTING_KEY);
+    public Binding emailBinding(Queue emailQueue, TopicExchange appExchange) {
+        return BindingBuilder.bind(emailQueue).to(appExchange).with(EMAIL_ROUTING_KEY);
     }
 
     @Bean
-    public Binding notiBinding(Queue notiQueue, TopicExchange emailExchange) {
-        return BindingBuilder.bind(notiQueue).to(emailExchange).with(NOTI_ROUTING_KEY);
+    public Binding notiBinding(Queue notiQueue, TopicExchange appExchange) {
+        return BindingBuilder.bind(notiQueue).to(appExchange).with(NOTI_ROUTING_KEY);
     }
 
     @Bean
