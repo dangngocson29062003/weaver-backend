@@ -1,12 +1,14 @@
 package com.weaver.weaver_backend.service.impl;
 
 import com.weaver.weaver_backend.common.AuthProvider;
+import com.weaver.weaver_backend.common.NotificationType;
 import com.weaver.weaver_backend.common.TokenType;
 import com.weaver.weaver_backend.common.UserStatus;
 import com.weaver.weaver_backend.dto.request.auth.CreateUserRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginViaOAuthRequest;
 import com.weaver.weaver_backend.dto.request.rabbitmq.EmailRequest;
+import com.weaver.weaver_backend.dto.request.rabbitmq.NotificationRequest;
 import com.weaver.weaver_backend.dto.response.TokenResponse;
 import com.weaver.weaver_backend.dto.response.auth.CreateUserResponse;
 import com.weaver.weaver_backend.dto.response.auth.LoginResponse;
@@ -64,7 +66,7 @@ public class AuthServiceImpl implements IAuthService {
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new BadRequestException("Invalid email or password");
         }
-        if(!user.getEmailVerified()) {
+        if (!user.getEmailVerified()) {
             EmailRequest emailRequest = new EmailRequest(user.getId(), user.getEmail());
             rabbitMQProducer.sendVerifiedEmail(emailRequest);
         }
@@ -101,6 +103,11 @@ public class AuthServiceImpl implements IAuthService {
                 .userId(user.getId())
                 .expiration(remainingTime > 0 ? remainingTime : 1)
                 .build());
+        NotificationRequest notificationRequest = new NotificationRequest(user.getId(),
+                "Verified Successfully",
+                "Welcome to WEAVER! Your email is verified successfully",
+                NotificationType.EMAIL_VERIFIED);
+        rabbitMQProducer.notify(notificationRequest);
         log.info("User {} verified email successfully", email);
         return handleLoginSuccess(user);
     }

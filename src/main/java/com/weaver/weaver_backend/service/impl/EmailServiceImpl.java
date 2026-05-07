@@ -41,8 +41,8 @@ public class EmailServiceImpl implements IEmailService {
 
     private final SpringTemplateEngine templateEngine;
 
-    @Value("${app.server-url}")
-    private String serverUrl;
+    @Value("${app.client-url}")
+    private String clientUrl;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -74,9 +74,9 @@ public class EmailServiceImpl implements IEmailService {
     @Override
     public void sendWelcomeEmail(User user) {
         TokenResponse tokenResponse = jwtUtils.generateToken(user, TokenType.VERIFICATION_TOKEN);
-        String verificationUrl = serverUrl + "/api/v1/auth/verify-email?token=" + tokenResponse.value();
+        String verificationUrl = clientUrl + "/email/verify?token=" + tokenResponse.value();
         Context context = new Context();
-        context.setVariable("username", user.getUsername());
+        context.setVariable("username", user.getEmail());
         context.setVariable("verificationUrl", verificationUrl);
         String htmlContent = templateEngine.process("email-welcome", context);
         sendHtmlEmail(user.getEmail(), "Verify your email address", htmlContent);
