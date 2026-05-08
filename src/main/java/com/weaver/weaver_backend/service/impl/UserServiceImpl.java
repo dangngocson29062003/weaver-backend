@@ -2,6 +2,8 @@ package com.weaver.weaver_backend.service.impl;
 
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 
+import com.weaver.weaver_backend.common.CredentialStatus;
+import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
 import com.weaver.weaver_backend.dto.response.TwoFAResponse;
 import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
 import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
@@ -20,6 +22,7 @@ import com.weaver.weaver_backend.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -43,12 +46,13 @@ public class UserServiceImpl implements IUserService {
 
     private final IRedisTokenService redisTokenService;
 
+    private final PasswordEncoder passwordEncoder;
+
 
     @Override
     public UserDetailResponse getMe(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        System.out.println(user.getId());
         return userMapper.toUserDetailResponse(user);
     }
 
@@ -60,7 +64,7 @@ public class UserServiceImpl implements IUserService {
 
         String secret;
 
-        if(user.getTwoFaSecret() == null || user.getTwoFaSecret().isBlank()) {
+        if (user.getTwoFaSecret() == null || user.getTwoFaSecret().isBlank()) {
             GoogleAuthenticatorKey gAuthKey = ggAuthService.createCredentials();
             secret = ggAuthService.getKey(gAuthKey);
             user.setTwoFaSecret(secret);
@@ -83,15 +87,15 @@ public class UserServiceImpl implements IUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
         String ggSecretKey = user.getTwoFaSecret();
-        if(!ggSecretKey.isEmpty()) {
+        if (!ggSecretKey.isEmpty()) {
             boolean isVerified = ggAuthService.verifyCode(ggSecretKey, OTP);
-            if(!isVerified){
+            if (!isVerified) {
                 throw new BadRequestException("OTP invalid");
-            }else {
+            } else {
                 user.setTwoFaEnabled(!user.getTwoFaEnabled());
                 userRepository.save(user);
             }
-        }else {
+        } else {
             throw new NotFoundException("User's google secret key not found");
         }
         return userMapper.toUserDetailResponse(user);
@@ -101,6 +105,26 @@ public class UserServiceImpl implements IUserService {
     public List<NotificationResponse> getNotifications(UUID userId) {
         List<Notification> notifications = notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(userId);
         return notificationMapper.toResponseList(notifications);
+    }
+
+    @Override
+    public void changePassword(UUID userId, PasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (user.getCredentialStatus() == CredentialStatus.PASSWORD_SET) {
+            if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+                throw new BadRequestException("Invalid password");
+            }
+            if (passwordEncoder.matches(request.newPassword(), user.getPassword()
+            )) {
+                throw new BadRequestException(
+                        "New password must be different from current password"
+                );
+            }
+        }
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setCredentialStatus(CredentialStatus.PASSWORD_SET);
+        userRepository.save(user);
     }
 
 }
