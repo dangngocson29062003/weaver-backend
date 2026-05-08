@@ -200,6 +200,7 @@ public class AuthServiceImpl implements IAuthService {
     public LoginResponse loginViaOAuth(LoginViaOAuthRequest request) {
         User user = userRepository.findByEmail(request.email()).orElseGet(() -> {
                     User newUser = userMapper.toUserFromOAuth(request);
+                    newUser.setEmailVerified(true);
                     newUser.setCredentialStatus(CredentialStatus.NO_PASSWORD);
                     return userRepository.save(newUser);
                 }
