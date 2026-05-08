@@ -33,12 +33,30 @@ public class AuthController {
     @PostMapping("/login")
     ApiResponse<LoginResponse> login(@RequestBody @Valid LoginRequest request, HttpServletResponse response) {
         LoginResponse data = iAuthService.login(request);
-        Cookie cookie = new Cookie("refresh_token", data.refreshToken());
-        cookie.setHttpOnly(true); // Prevents JavaScript from accessing the cookie (XSS protection)
-        cookie.setSecure(false); // Change to true in production
-        cookie.setPath("/"); // Cookie is accessible across all paths in the app
-        cookie.setMaxAge(14 * 24 * 60 * 60); // Cookie expiry: 14 days — matches refresh token TTL
-        response.addCookie(cookie);
+        // REQUIRE 2FA
+        if (data.twoFAToken() != null) {
+            Cookie mfaCookie =
+                    new Cookie(
+                            "mfa_token",
+                            data.twoFAToken()
+                    );
+            mfaCookie.setHttpOnly(true);
+            mfaCookie.setSecure(false);
+            mfaCookie.setPath("/");
+            mfaCookie.setMaxAge(5 * 60);
+            response.addCookie(mfaCookie);
+        } else {
+            Cookie refreshCookie =
+                    new Cookie(
+                            "refresh_token",
+                            data.refreshToken()
+                    );
+            refreshCookie.setHttpOnly(true);
+            refreshCookie.setSecure(false);
+            refreshCookie.setPath("/");
+            refreshCookie.setMaxAge(14 * 24 * 60 * 60);
+            response.addCookie(refreshCookie);
+        }
 
         return ApiResponse.<LoginResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -47,16 +65,21 @@ public class AuthController {
                 .build();
     }
 
-    @GetMapping("/2fa")
-    ApiResponse<LoginResponse> verifyTwoFA(HttpServletResponse response, @RequestParam String OTP, @RequestHeader("twoFAToken") String token) {
-        LoginResponse data = iAuthService.verifyTwoFA(token, OTP);
-        Cookie cookie = new Cookie("refresh_token", data.refreshToken());
-        cookie.setHttpOnly(true); // Prevents JavaScript from accessing the cookie (XSS protection)
-        cookie.setSecure(false); // Change to true in production
-        cookie.setPath("/"); // Cookie is accessible across all paths in the app
-        cookie.setMaxAge(14 * 24 * 60 * 60); // Cookie expiry: 14 days — matches refresh token TTL
-        response.addCookie(cookie);
-
+    @PostMapping("/2fa")
+    ApiResponse<LoginResponse> verifyTwoFA(HttpServletResponse response, @RequestParam String otp, @CookieValue("mfa_token") String token) {
+        LoginResponse data = iAuthService.verifyTwoFA(token, otp);
+        Cookie refreshToken = new Cookie("refresh_token", data.refreshToken());
+        refreshToken.setHttpOnly(true); // Prevents JavaScript from accessing the cookie (XSS protection)
+        refreshToken.setSecure(false); // Change to true in production
+        refreshToken.setPath("/"); // Cookie is accessible across all paths in the app
+        refreshToken.setMaxAge(14 * 24 * 60 * 60); // Cookie expiry: 14 days — matches refresh token TTL
+        response.addCookie(refreshToken);
+        Cookie mfaCookie = new Cookie("mfa_token", "");
+        mfaCookie.setHttpOnly(true);
+        mfaCookie.setSecure(false);
+        mfaCookie.setPath("/");
+        mfaCookie.setMaxAge(0);
+        response.addCookie(mfaCookie);
         return ApiResponse.<LoginResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Login successful")

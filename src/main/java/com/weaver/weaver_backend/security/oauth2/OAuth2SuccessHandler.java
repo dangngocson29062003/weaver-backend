@@ -24,36 +24,52 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final IAuthService authService;
     @Value("${app.client-url}")
     private String clientUrl;
+
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request,
-                                        HttpServletResponse response,
-                                        Authentication authentication) throws IOException, ServletException {
+    public void onAuthenticationSuccess(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication authentication
+    ) throws IOException, ServletException {
         OAuth2AuthenticationToken token =
                 (OAuth2AuthenticationToken) authentication;
-        String provider = token.getAuthorizedClientRegistrationId();
+        String provider =
+                token.getAuthorizedClientRegistrationId();
         OAuth2UserInfo userInfo =
-                OAuth2UserInfoFactory.get(provider,
-                        token.getPrincipal().getAttributes());
-
+                OAuth2UserInfoFactory.get(
+                        provider,
+                        token.getPrincipal().getAttributes()
+                );
         String email = userInfo.getEmail();
         String providerId = userInfo.getProviderId();
-
         AuthProvider providerEnum = AuthProvider.from(provider);
-        LoginViaOAuthRequest oauthRequest = new LoginViaOAuthRequest(
-                email,
-                providerEnum,
-                providerId
-        );
+        LoginViaOAuthRequest oauthRequest = new LoginViaOAuthRequest(email, providerEnum, providerId);
         LoginResponse data = authService.loginViaOAuth(oauthRequest);
-        Cookie cookie = new Cookie("refresh_token", data.refreshToken());
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(14 * 24 * 60 * 60);
-        response.addCookie(cookie);
-        String redirectUrl = clientUrl + "/oauth/success?accessToken=" +
-                URLEncoder.encode(data.accessToken(), StandardCharsets.UTF_8);
-        clearAuthenticationAttributes(request);
-        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+        if (data.twoFAToken() != null) {
+            Cookie mfaToken = new Cookie("mfa_token", data.twoFAToken());
+            mfaToken.setHttpOnly(true);
+            mfaToken.setSecure(false);
+            mfaToken.setPath("/");
+            mfaToken.setMaxAge(5 * 60);
+            response.addCookie(mfaToken);
+            clearAuthenticationAttributes(request);
+            getRedirectStrategy().sendRedirect(request, response, clientUrl + "/login/2fa");
+            return;
+        }
+        Cookie refreshCookie = new Cookie("refresh_token", data.refreshToken());
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(false);
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge(14 * 24 * 60 * 60);
+        response.addCookie(refreshCookie);
+        String redirectUrl = clientUrl + "/oauth/success?accessToken=" + URLEncoder.encode(data.accessToken(), StandardCharsets.UTF_8);
+        clearAuthenticationAttributes(
+                request
+        );
+        getRedirectStrategy().sendRedirect(
+                request,
+                response,
+                redirectUrl
+        );
     }
 }
