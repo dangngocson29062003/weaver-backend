@@ -81,4 +81,15 @@ public class EmailServiceImpl implements IEmailService {
         String htmlContent = templateEngine.process("email-welcome", context);
         sendHtmlEmail(user.getEmail(), "Verify your email address", htmlContent);
     }
+
+    @Override
+    public void sendForgotPasswordEmail(User user) {
+        TokenResponse tokenResponse = jwtUtils.generateToken(user, TokenType.FORGOT_PASSWORD_TOKEN);
+        String resetPasswordUrl = clientUrl + "/reset/password?token=" + tokenResponse.value();
+        Context context = new Context();
+        context.setVariable("username", user.getEmail());
+        context.setVariable("resetPasswordUrl", resetPasswordUrl);
+        String htmlContent = templateEngine.process("email-forgot-password", context);
+        sendHtmlEmail(user.getEmail(), "Reset your password", htmlContent);
+    }
 }

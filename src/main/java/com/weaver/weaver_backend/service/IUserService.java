@@ -13,7 +13,7 @@ public interface IUserService {
 
     TwoFAResponse setupTwoFA(UUID userId);
 
-    UserDetailResponse toggle2FA(UUID userId, int OTP);
+    UserDetailResponse toggle2FA(UUID userId, String OTP);
 
     List<NotificationResponse>  getNotifications(UUID userId);
 

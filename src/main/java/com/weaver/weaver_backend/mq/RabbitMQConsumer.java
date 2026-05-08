@@ -1,5 +1,6 @@
 package com.weaver.weaver_backend.mq;
 
+import com.weaver.weaver_backend.common.EmailType;
 import com.weaver.weaver_backend.configuration.RabbitConfiguration;
 import com.weaver.weaver_backend.dto.request.rabbitmq.EmailRequest;
 import com.weaver.weaver_backend.dto.request.rabbitmq.NotificationRequest;
@@ -23,12 +24,14 @@ public class RabbitMQConsumer {
 
     @RabbitListener(queues = RabbitConfiguration.EMAIL_QUEUE)
     public void handleSendWelcomeEmail(EmailRequest request) {
-        log.info("Received email request for: {}", request.email());
+        log.info("Received email request for: {}", request.user().getEmail());
         try {
-            User user = userRepository.findById(request.userId())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            emailService.sendWelcomeEmail(user);
-            log.info("Email sent via RabbitMQ for: {}", request.email());
+            if (request.emailType() == EmailType.VERIFICATION_EMAIL) {
+                emailService.sendWelcomeEmail(request.user());
+            }else if(request.emailType() == EmailType.PASSWORD_RESET_EMAIL) {
+                emailService.sendForgotPasswordEmail(request.user());
+            }
+            log.info("Email sent via RabbitMQ for: {}", request.user().getEmail());
         } catch (Exception e) {
             log.error("Error processing email queue: ", e);
         }

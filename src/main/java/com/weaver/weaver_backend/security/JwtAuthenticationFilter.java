@@ -4,6 +4,7 @@ import com.weaver.weaver_backend.common.TokenType;
 import com.weaver.weaver_backend.common.UserStatus;
 import com.weaver.weaver_backend.dto.response.auth.AuthUserResponse;
 import com.weaver.weaver_backend.entity.User;
+import com.weaver.weaver_backend.exception.ForbiddenException;
 import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
 import com.weaver.weaver_backend.repository.UserRepository;
@@ -30,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
     private final HandlerExceptionResolver handlerExceptionResolver;
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -38,9 +40,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         try {
             String token = parseJwt(request);
-            if(token != null) {
+            if (token != null) {
                 Claims claims = jwtUtils.extractClaims(token);
-                if (jwtUtils.isTokenValid(claims)) {
+                String jwtId = jwtUtils.getJwtId(claims);
+                if (!jwtUtils.isTokenBlacklisted(jwtId)) {
                     TokenType tokenType = jwtUtils.getType(claims);
                     if (tokenType != TokenType.ACCESS_TOKEN) {
                         throw new UnauthorizedException("Invalid access token");

@@ -54,25 +54,32 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public TwoFAResponse setupTwoFA(UUID userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
-        String qrUrl = null;
-        if(!user.getTwoFaEnabled()) {
-            if(user.getTwoFaSecret() == null || user.getTwoFaSecret().isEmpty()) {
-                GoogleAuthenticatorKey gAuthKey = ggAuthService.createCredentials();
-                String secretKey = ggAuthService.getKey(gAuthKey);
-                user.setTwoFaSecret(secretKey);
-                userRepository.save(user);
-                qrUrl = ggAuthService.getQRBarUrl(user.getEmail(), gAuthKey);
-            }
-        }else {
-            qrUrl = ggAuthService.getQRBarUrl(user.getEmail(),
-                    new GoogleAuthenticatorKey.Builder(user.getTwoFaSecret()).build());
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        String secret;
+
+        if(user.getTwoFaSecret() == null || user.getTwoFaSecret().isBlank()) {
+            GoogleAuthenticatorKey gAuthKey = ggAuthService.createCredentials();
+            secret = ggAuthService.getKey(gAuthKey);
+            user.setTwoFaSecret(secret);
+            userRepository.save(user);
+
+        } else {
+            secret = user.getTwoFaSecret();
         }
+
+        String qrUrl = ggAuthService.getQRBarUrl(
+                user.getEmail(),
+                new GoogleAuthenticatorKey.Builder(secret).build()
+        );
+
         return new TwoFAResponse(qrUrl);
     }
 
     @Override
-    public UserDetailResponse toggle2FA(UUID userId, int OTP) {
+    public UserDetailResponse toggle2FA(UUID userId, String OTP) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
         String ggSecretKey = user.getTwoFaSecret();

@@ -1,9 +1,6 @@
 package com.weaver.weaver_backend.service.impl;
 
-import com.weaver.weaver_backend.common.AuthProvider;
-import com.weaver.weaver_backend.common.NotificationType;
-import com.weaver.weaver_backend.common.TokenType;
-import com.weaver.weaver_backend.common.UserStatus;
+import com.weaver.weaver_backend.common.*;
 import com.weaver.weaver_backend.dto.request.auth.CreateUserRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginViaOAuthRequest;
@@ -15,6 +12,7 @@ import com.weaver.weaver_backend.dto.response.auth.LoginResponse;
 import com.weaver.weaver_backend.entity.RedisToken;
 import com.weaver.weaver_backend.entity.User;
 import com.weaver.weaver_backend.exception.BadRequestException;
+import com.weaver.weaver_backend.exception.ForbiddenException;
 import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
 import com.weaver.weaver_backend.mapper.UserMapper;
@@ -67,8 +65,8 @@ public class AuthServiceImpl implements IAuthService {
             throw new BadRequestException("Invalid email or password");
         }
         if (!user.getEmailVerified()) {
-            EmailRequest emailRequest = new EmailRequest(user.getId(), user.getEmail());
-            rabbitMQProducer.sendVerifiedEmail(emailRequest);
+            EmailRequest emailRequest = new EmailRequest(user, EmailType.VERIFICATION_EMAIL);
+            rabbitMQProducer.sendEmail(emailRequest);
         }
         return handleLoginSuccess(user);
     }
@@ -77,8 +75,9 @@ public class AuthServiceImpl implements IAuthService {
     @Transactional
     public LoginResponse verifyEmail(String token) {
         Claims claims = jwtUtils.extractClaims(token);
-        if (claims == null || !jwtUtils.isTokenValid(claims)) {
-            throw new BadRequestException("Token is invalid or expired");
+        String jwtId = jwtUtils.getJwtId(claims);
+        if(jwtUtils.isTokenBlacklisted(jwtId)) {
+            throw new ForbiddenException("Cannot access to resource");
         }
         TokenType tokenType = jwtUtils.getType(claims);
         if (tokenType != TokenType.VERIFICATION_TOKEN) {
@@ -96,7 +95,6 @@ public class AuthServiceImpl implements IAuthService {
             user.setUserStatus(UserStatus.ACTIVE);
             userRepository.save(user);
         }
-        String jwtId = jwtUtils.getJwtId(claims);
         long remainingTime = claims.getExpiration().getTime() - System.currentTimeMillis();
         redisTokenService.saveToken(RedisToken.builder()
                 .jwtId(jwtId)
@@ -113,7 +111,42 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
-    public LoginResponse verifyTwoFA(String token, int OTP) {
+    public void sendPasswordResetEmail(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
+        EmailRequest emailRequest = new EmailRequest(user, EmailType.PASSWORD_RESET_EMAIL);
+        rabbitMQProducer.sendEmail(emailRequest);
+    }
+
+    @Override
+    public void resetPassword(String token, String password) {
+        Claims claims = jwtUtils.extractClaims(token);
+        String jwtId = jwtUtils.getJwtId(claims);
+        if(jwtUtils.isTokenBlacklisted(jwtId)) {
+            throw new ForbiddenException("Cannot access to resource");
+        }
+        TokenType tokenType = jwtUtils.getType(claims);
+        if (tokenType != TokenType.FORGOT_PASSWORD_TOKEN) {
+            throw new BadRequestException("Invalid Forgot Password Token");
+        }
+        UUID userId = jwtUtils.getUserId(claims);
+        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        user.setPassword(passwordEncoder.encode(password));
+        userRepository.save(user);
+        long remainingTime = claims.getExpiration().getTime() - System.currentTimeMillis();
+        redisTokenService.saveToken(RedisToken.builder()
+                .jwtId(jwtId)
+                .userId(user.getId())
+                .expiration(remainingTime > 0 ? remainingTime : 1)
+                .build());
+        NotificationRequest notificationRequest = new NotificationRequest(user.getId(),
+                "Changed Password Successfully",
+                "You recently changed password",
+                NotificationType.CHANGE_PASSWORD);
+        rabbitMQProducer.notify(notificationRequest);
+    }
+
+    @Override
+    public LoginResponse verifyTwoFA(String token, String OTP) {
         try {
             Claims claims = jwtUtils.extractClaims(token);
             UUID userId = jwtUtils.getUserId(claims);
@@ -146,7 +179,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackOn = Exception.class)
     public CreateUserResponse createUser(CreateUserRequest request) {
         User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.password()));
@@ -154,8 +187,8 @@ public class AuthServiceImpl implements IAuthService {
         user.setUserStatus(UserStatus.PENDING);
         try {
             user = userRepository.save(user);
-            EmailRequest emailRequest = new EmailRequest(user.getId(), user.getEmail());
-            rabbitMQProducer.sendVerifiedEmail(emailRequest);
+            EmailRequest emailRequest = new EmailRequest(user, EmailType.VERIFICATION_EMAIL);
+            rabbitMQProducer.sendEmail(emailRequest);
         } catch (DataIntegrityViolationException exception) {
             log.error("User already exists");
             throw new BadRequestException("User already exists");
@@ -167,6 +200,7 @@ public class AuthServiceImpl implements IAuthService {
     public LoginResponse loginViaOAuth(LoginViaOAuthRequest request) {
         User user = userRepository.findByEmail(request.email()).orElseGet(() -> {
                     User newUser = userMapper.toUserFromOAuth(request);
+                    newUser.setCredentialStatus(CredentialStatus.NO_PASSWORD);
                     return userRepository.save(newUser);
                 }
         );
@@ -179,15 +213,12 @@ public class AuthServiceImpl implements IAuthService {
         TokenType tokenType = jwtUtils.getType(refreshClaims);
         UUID userId = jwtUtils.getUserId(refreshClaims);
         String refreshJwtId = jwtUtils.getJwtId(refreshClaims);
-
         if (tokenType != TokenType.REFRESH_TOKEN) {
             throw new BadRequestException("Invalid refresh token");
         }
-
         if (!redisTokenService.existsByJwtId(refreshJwtId)) {
             throw new UnauthorizedException("Refresh token has been revoked or logged out");
         }
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 

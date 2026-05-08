@@ -1,6 +1,7 @@
 package com.weaver.weaver_backend.dto.request.rabbitmq;
 
-import java.util.UUID;
+import com.weaver.weaver_backend.common.EmailType;
+import com.weaver.weaver_backend.entity.User;
 
-public record EmailRequest(UUID userId, String email) {
+public record EmailRequest (User user, EmailType emailType) {
 }
