@@ -2,5 +2,6 @@ package com.weaver.weaver_backend.common;
 
 public enum NotificationType {
     SYSTEM,
-    EMAIL_VERIFIED
+    EMAIL_VERIFIED,
+    CHANGE_PASSWORD
 }

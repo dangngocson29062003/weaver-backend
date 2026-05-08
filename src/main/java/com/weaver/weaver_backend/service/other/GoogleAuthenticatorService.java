@@ -19,7 +19,7 @@ public class GoogleAuthenticatorService {
     public String getQRBarUrl(String email, GoogleAuthenticatorKey key) {
         return GoogleAuthenticatorQRGenerator.getOtpAuthURL("Weaver Application", email, key);
     }
-    public boolean verifyCode(String secret, int otp) {
-        return ggAuth.authorize(secret, otp);
+    public boolean verifyCode(String secret, String otp) {
+        return ggAuth.authorize(secret, Integer.parseInt(otp));
     }
 }

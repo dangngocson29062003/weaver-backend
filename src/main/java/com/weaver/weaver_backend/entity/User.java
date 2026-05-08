@@ -2,6 +2,7 @@ package com.weaver.weaver_backend.entity;
 
 
 import com.weaver.weaver_backend.common.AuthProvider;
+import com.weaver.weaver_backend.common.CredentialStatus;
 import com.weaver.weaver_backend.common.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,6 +31,10 @@ public class User {
     private String nickname;
 
     private String password;
+
+    @Column(name = "credential_status", nullable = false)
+    @Builder.Default
+    private CredentialStatus credentialStatus  = CredentialStatus.PASSWORD_SET;
 
     private String avatarUrl;
 

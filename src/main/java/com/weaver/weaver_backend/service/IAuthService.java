@@ -14,7 +14,10 @@ public interface IAuthService {
     LoginResponse loginViaOAuth(LoginViaOAuthRequest request);
     LoginResponse login(LoginRequest request);
     LoginResponse verifyEmail(String token);
-    LoginResponse verifyTwoFA(String token, int OTP);
+    void sendPasswordResetEmail(String email);
+
+    void resetPassword(String token, String newPassword);
+    LoginResponse verifyTwoFA(String token, String OTP);
     LoginResponse refreshToken(String refreshToken);
     void logout(String refreshToken) throws ParseException, JOSEException;;
 }
