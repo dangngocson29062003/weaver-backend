@@ -1,11 +1,13 @@
 package com.weaver.weaver_backend.controller;
 
+import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
 import com.weaver.weaver_backend.dto.response.ApiResponse;
 import com.weaver.weaver_backend.dto.response.TwoFAResponse;
 import com.weaver.weaver_backend.dto.response.auth.AuthUserResponse;
 import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
 import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
 import com.weaver.weaver_backend.service.IUserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +30,12 @@ public class UserController {
     ApiResponse<List<NotificationResponse>> getNotifications(@AuthenticationPrincipal AuthUserResponse authUserResponse) {
         List<NotificationResponse> data = iUserService.getNotifications(authUserResponse.id());
         return ApiResponse.success(data, "Get notifications successfully");
+    }
+
+    @PatchMapping("/password")
+    ApiResponse<Void> changePassword(@AuthenticationPrincipal AuthUserResponse authUserResponse, @Valid @RequestBody PasswordRequest request) {
+        iUserService.changePassword(authUserResponse.id(), request);
+        return ApiResponse.success(null, "Change password successfully");
     }
 
     @GetMapping("/2fa/setup")

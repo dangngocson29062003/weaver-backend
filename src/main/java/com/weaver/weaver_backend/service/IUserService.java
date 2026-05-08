@@ -1,6 +1,7 @@
 package com.weaver.weaver_backend.service;
 
 
+import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
 import com.weaver.weaver_backend.dto.response.TwoFAResponse;
 import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
 import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
@@ -17,4 +18,5 @@ public interface IUserService {
 
     List<NotificationResponse>  getNotifications(UUID userId);
 
+    void changePassword(UUID userId, PasswordRequest request);
 }
