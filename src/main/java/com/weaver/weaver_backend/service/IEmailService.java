@@ -7,4 +7,5 @@ public interface IEmailService {
 
     void sendWelcomeEmail(User user);
 
+    void sendForgotPasswordEmail(User user);
 }

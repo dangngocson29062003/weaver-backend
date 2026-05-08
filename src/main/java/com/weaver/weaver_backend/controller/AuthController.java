@@ -3,6 +3,7 @@ package com.weaver.weaver_backend.controller;
 import com.nimbusds.jose.JOSEException;
 import com.weaver.weaver_backend.dto.request.auth.CreateUserRequest;
 import com.weaver.weaver_backend.dto.request.auth.LoginRequest;
+import com.weaver.weaver_backend.dto.request.auth.PasswordResetRequest;
 import com.weaver.weaver_backend.dto.response.ApiResponse;
 import com.weaver.weaver_backend.dto.response.auth.CreateUserResponse;
 import com.weaver.weaver_backend.dto.response.auth.LoginResponse;
@@ -10,6 +11,9 @@ import com.weaver.weaver_backend.service.IAuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -19,12 +23,13 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import java.text.ParseException;
 
 @RestController
-@RequestMapping("/api/v1/auth" )
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final IAuthService iAuthService;
     private final SpringTemplateEngine templateEngine;
+
     @PostMapping("/login")
     ApiResponse<LoginResponse> login(@RequestBody @Valid LoginRequest request, HttpServletResponse response) {
         LoginResponse data = iAuthService.login(request);
@@ -43,7 +48,7 @@ public class AuthController {
     }
 
     @GetMapping("/2fa")
-    ApiResponse<LoginResponse> verifyTwoFA(HttpServletResponse response, @RequestParam int OTP, @RequestHeader("twoFAToken") String token) {
+    ApiResponse<LoginResponse> verifyTwoFA(HttpServletResponse response, @RequestParam String OTP, @RequestHeader("twoFAToken") String token) {
         LoginResponse data = iAuthService.verifyTwoFA(token, OTP);
         Cookie cookie = new Cookie("refresh_token", data.refreshToken());
         cookie.setHttpOnly(true); // Prevents JavaScript from accessing the cookie (XSS protection)
@@ -68,11 +73,13 @@ public class AuthController {
                 .data(data)
                 .build();
     }
+
     @GetMapping("/verify-email")
     public ApiResponse<LoginResponse> verifyEmail(@RequestParam("token") String token) {
         LoginResponse data = iAuthService.verifyEmail(token);
         return ApiResponse.success(data, "Account verified and logged in successfully!");
     }
+
     @PostMapping("/logout")
     ApiResponse<Void> logout(
             @CookieValue("refresh_token") String refreshToken,
@@ -91,6 +98,23 @@ public class AuthController {
                 .status(HttpStatus.OK.value())
                 .message("Logout successful")
                 .build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<LoginResponse> sendPasswordResetEmail(@Valid
+                                                             @NotBlank(message = "Email is required")
+                                                             @Email(message = "Invalid email address")
+                                                             @RequestParam String email) {
+
+        iAuthService.sendPasswordResetEmail(email);
+        return ApiResponse.success(null, "Send password reset email successfully!");
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<LoginResponse> resetPassword(@RequestParam("token") String token,
+                                                    @Valid @RequestBody PasswordResetRequest request) {
+        iAuthService.resetPassword(token, request.password());
+        return ApiResponse.success(null, "Reset password successfully!");
     }
 
     @PostMapping("/refresh-token")

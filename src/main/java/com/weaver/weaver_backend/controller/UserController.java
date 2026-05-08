@@ -29,6 +29,7 @@ public class UserController {
         List<NotificationResponse> data = iUserService.getNotifications(authUserResponse.id());
         return ApiResponse.success(data, "Get notifications successfully");
     }
+
     @GetMapping("/2fa/setup")
     ApiResponse<TwoFAResponse> setupTwoFA(@AuthenticationPrincipal AuthUserResponse authUserResponse) {
         TwoFAResponse data = iUserService.setupTwoFA(authUserResponse.id());
@@ -36,8 +37,8 @@ public class UserController {
     }
 
     @PostMapping("/2fa")
-    ApiResponse<UserDetailResponse> enable2FA(@AuthenticationPrincipal AuthUserResponse authUserResponse, @RequestParam int OTP) {
-        UserDetailResponse data = iUserService.toggle2FA(authUserResponse.id(), OTP);
+    ApiResponse<UserDetailResponse> enable2FA(@AuthenticationPrincipal AuthUserResponse authUserResponse, @RequestParam String otp) {
+        UserDetailResponse data = iUserService.toggle2FA(authUserResponse.id(), otp);
         return ApiResponse.success(data, data.twoFaEnabled() ? "The 2FA enabled successfully" : "The 2FA disabled successfully");
     }
 

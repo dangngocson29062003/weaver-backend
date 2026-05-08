@@ -4,15 +4,11 @@ import com.weaver.weaver_backend.common.TokenType;
 import com.weaver.weaver_backend.common.UserStatus;
 import com.weaver.weaver_backend.dto.response.TokenResponse;
 import com.weaver.weaver_backend.entity.User;
-import com.weaver.weaver_backend.exception.GlobalExceptionHandler;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
-import com.weaver.weaver_backend.repository.UserRepository;
 import com.weaver.weaver_backend.service.IRedisTokenService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -123,14 +119,6 @@ public class JwtUtils {
 
     public String getJwtId(Claims claims) {
         return claims.getId();
-    }
-
-    public boolean isTokenValid(Claims claims) {
-        return claims != null && !isTokenExpired(claims) && !isTokenBlacklisted(claims.getId());
-    }
-
-    private boolean isTokenExpired(Claims claims) {
-        return getExpiration(claims).before(new Date());
     }
 
     public boolean isTokenBlacklisted(String jwtId) {
