@@ -2,7 +2,8 @@ package com.weaver.weaver_backend.service;
 
 
 import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
-import com.weaver.weaver_backend.dto.response.TwoFAResponse;
+import com.weaver.weaver_backend.dto.response.user.TwoFASetupResponse;
+import com.weaver.weaver_backend.dto.response.user.TwoFAStatusResponse;
 import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
 import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
 
@@ -12,9 +13,9 @@ import java.util.UUID;
 public interface IUserService {
     UserDetailResponse getMe(UUID userId);
 
-    TwoFAResponse setupTwoFA(UUID userId);
+    TwoFASetupResponse setupTwoFA(UUID userId);
 
-    UserDetailResponse toggle2FA(UUID userId, String OTP);
+    TwoFAStatusResponse toggle2FA(UUID userId, String OTP);
 
     List<NotificationResponse>  getNotifications(UUID userId);
 
