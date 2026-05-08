@@ -112,6 +112,10 @@ public class UserServiceImpl implements IUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getCredentialStatus() == CredentialStatus.PASSWORD_SET) {
+            if (request.currentPassword() == null ||
+                    request.currentPassword().isBlank()) {
+                throw new BadRequestException("Current password is required");
+            }
             if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
                 throw new BadRequestException("Invalid password");
             }
