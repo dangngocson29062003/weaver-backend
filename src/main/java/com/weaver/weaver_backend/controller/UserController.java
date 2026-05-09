@@ -51,4 +51,12 @@ public class UserController {
         return ApiResponse.success(data, data.enabled() ? "The 2FA enabled successfully" : "The 2FA disabled successfully");
     }
 
+    @PostMapping("/2fa/verify-backup")
+    ApiResponse<TwoFAStatusResponse> disable2FAWithBackup(
+            @AuthenticationPrincipal AuthUserResponse authUserResponse,
+            @RequestParam String backupCode
+    ) {
+        TwoFAStatusResponse data = iUserService.disable2FAWithBackup(authUserResponse.id(), backupCode);
+        return ApiResponse.success(data, "The 2FA disabled successfully using backup code");
+    }
 }

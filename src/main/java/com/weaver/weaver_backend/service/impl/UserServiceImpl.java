@@ -128,6 +128,26 @@ public class UserServiceImpl implements IUserService {
     }
 
     @Override
+    @Transactional
+    public TwoFAStatusResponse disable2FAWithBackup(UUID userId, String rawBackupCode) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (!user.getTwoFaEnabled()) {
+            throw new BadRequestException("2FA is not enabled");
+        }
+        List<UserBackupCode> storedCodes = userBackupCodeRepository.findAllByUser(user);
+        UserBackupCode validCode = storedCodes.stream()
+                .filter(code -> passwordEncoder.matches(rawBackupCode, code.getCode()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Invalid backup code"));
+        userBackupCodeRepository.delete(validCode);
+        user.setTwoFaEnabled(false);
+        userBackupCodeRepository.deleteByUser(user);
+        userRepository.save(user);
+        return new TwoFAStatusResponse(false, new ArrayList<>());
+    }
+
+    @Override
     public List<NotificationResponse> getNotifications(UUID userId) {
         List<Notification> notifications = notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(userId);
         return notificationMapper.toResponseList(notifications);

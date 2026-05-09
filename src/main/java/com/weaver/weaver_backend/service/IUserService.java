@@ -17,6 +17,8 @@ public interface IUserService {
 
     TwoFAStatusResponse toggle2FA(UUID userId, String OTP);
 
+    TwoFAStatusResponse disable2FAWithBackup(UUID userId, String rawBackupCode);
+
     List<NotificationResponse>  getNotifications(UUID userId);
 
     void changePassword(UUID userId, PasswordRequest request);
