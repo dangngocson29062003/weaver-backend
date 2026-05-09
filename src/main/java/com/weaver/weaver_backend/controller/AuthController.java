@@ -87,6 +87,27 @@ public class AuthController {
                 .build();
     }
 
+    @PostMapping("/2fa/verify-backup")
+    ApiResponse<LoginResponse> verifyBackupCode(HttpServletResponse response, @RequestParam String backupCode, @CookieValue("mfa_token") String token) {
+        LoginResponse data = iAuthService.verifyBackupCode(token, backupCode);
+        Cookie refreshToken = new Cookie("refresh_token", data.refreshToken());
+        refreshToken.setHttpOnly(true); // Prevents JavaScript from accessing the cookie (XSS protection)
+        refreshToken.setSecure(false); // Change to true in production
+        refreshToken.setPath("/"); // Cookie is accessible across all paths in the app
+        refreshToken.setMaxAge(14 * 24 * 60 * 60); // Cookie expiry: 14 days — matches refresh token TTL
+        response.addCookie(refreshToken);
+        Cookie mfaCookie = new Cookie("mfa_token", "");
+        mfaCookie.setHttpOnly(true);
+        mfaCookie.setSecure(false);
+        mfaCookie.setPath("/");
+        mfaCookie.setMaxAge(0);
+        response.addCookie(mfaCookie);
+        return ApiResponse.<LoginResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Login successful")
+                .data(data)
+                .build();
+    }
     @PostMapping("/register")
     ApiResponse<CreateUserResponse> createUser(@RequestBody @Valid CreateUserRequest request) {
         var data = iAuthService.createUser(request);

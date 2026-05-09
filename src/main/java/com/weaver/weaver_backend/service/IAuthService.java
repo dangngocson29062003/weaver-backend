@@ -18,6 +18,7 @@ public interface IAuthService {
 
     void resetPassword(String token, String newPassword);
     LoginResponse verifyTwoFA(String token, String OTP);
+    LoginResponse verifyBackupCode(String token, String rawBackupCode);
     LoginResponse refreshToken(String refreshToken);
     void logout(String refreshToken) throws ParseException, JOSEException;;
 }

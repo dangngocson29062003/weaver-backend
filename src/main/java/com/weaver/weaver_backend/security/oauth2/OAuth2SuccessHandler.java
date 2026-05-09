@@ -45,17 +45,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         AuthProvider providerEnum = AuthProvider.from(provider);
         LoginViaOAuthRequest oauthRequest = new LoginViaOAuthRequest(email, providerEnum, providerId);
         LoginResponse data = authService.loginViaOAuth(oauthRequest);
-        if (data.twoFAToken() != null) {
-            Cookie mfaToken = new Cookie("mfa_token", data.twoFAToken());
-            mfaToken.setHttpOnly(true);
-            mfaToken.setSecure(false);
-            mfaToken.setPath("/");
-            mfaToken.setMaxAge(5 * 60);
-            response.addCookie(mfaToken);
-            clearAuthenticationAttributes(request);
-            getRedirectStrategy().sendRedirect(request, response, clientUrl + "/login/2fa");
-            return;
-        }
         Cookie refreshCookie = new Cookie("refresh_token", data.refreshToken());
         refreshCookie.setHttpOnly(true);
         refreshCookie.setSecure(false);
