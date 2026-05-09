@@ -11,12 +11,14 @@ import com.weaver.weaver_backend.dto.response.auth.CreateUserResponse;
 import com.weaver.weaver_backend.dto.response.auth.LoginResponse;
 import com.weaver.weaver_backend.entity.RedisToken;
 import com.weaver.weaver_backend.entity.User;
+import com.weaver.weaver_backend.entity.UserBackupCode;
 import com.weaver.weaver_backend.exception.BadRequestException;
 import com.weaver.weaver_backend.exception.ForbiddenException;
 import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
 import com.weaver.weaver_backend.mapper.UserMapper;
 import com.weaver.weaver_backend.mq.RabbitMQProducer;
+import com.weaver.weaver_backend.repository.UserBackupCodeRepository;
 import com.weaver.weaver_backend.repository.UserRepository;
 import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.service.IAuthService;
@@ -33,6 +35,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -49,6 +52,8 @@ public class AuthServiceImpl implements IAuthService {
     private final PasswordEncoder passwordEncoder;
 
     private final UserRepository userRepository;
+
+    private final UserBackupCodeRepository userBackupCodeRepository;
 
     private final IRedisTokenService redisTokenService;
 
@@ -76,7 +81,7 @@ public class AuthServiceImpl implements IAuthService {
     public LoginResponse verifyEmail(String token) {
         Claims claims = jwtUtils.extractClaims(token);
         String jwtId = jwtUtils.getJwtId(claims);
-        if(jwtUtils.isTokenBlacklisted(jwtId)) {
+        if (jwtUtils.isTokenBlacklisted(jwtId)) {
             throw new ForbiddenException("Cannot access to resource");
         }
         TokenType tokenType = jwtUtils.getType(claims);
@@ -121,7 +126,7 @@ public class AuthServiceImpl implements IAuthService {
     public void resetPassword(String token, String password) {
         Claims claims = jwtUtils.extractClaims(token);
         String jwtId = jwtUtils.getJwtId(claims);
-        if(jwtUtils.isTokenBlacklisted(jwtId)) {
+        if (jwtUtils.isTokenBlacklisted(jwtId)) {
             throw new ForbiddenException("Cannot access to resource");
         }
         TokenType tokenType = jwtUtils.getType(claims);
@@ -179,6 +184,40 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
+    public LoginResponse verifyBackupCode(String token, String rawBackupCode) {
+        try {
+            Claims claims = jwtUtils.extractClaims(token);
+            UUID userId = jwtUtils.getUserId(claims);
+            TokenType tokenType = jwtUtils.getType(claims);
+            if (tokenType != TokenType.TWOFA_TOKEN) {
+                throw new BadRequestException("Invalid 2FA token");
+            }
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User not found"));
+            List<UserBackupCode> storedCodes = userBackupCodeRepository.findAllByUser(user);
+            UserBackupCode validCode = storedCodes.stream()
+                    .filter(code -> passwordEncoder.matches(rawBackupCode, code.getCode()))
+                    .findFirst()
+                    .orElseThrow(() -> new BadRequestException("Invalid backup code"));
+            userBackupCodeRepository.delete(validCode);
+            TokenResponse accessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN);
+            TokenResponse refreshToken = jwtUtils.generateToken(user, TokenType.REFRESH_TOKEN);
+            RedisToken redisToken = RedisToken.builder()
+                    .jwtId(refreshToken.jwtId())
+                    .userId(user.getId())
+                    .expiration(refreshToken.ttlSeconds())
+                    .build();
+            redisTokenService.saveToken(redisToken);
+            return LoginResponse.builder()
+                    .accessToken(accessToken.value())
+                    .refreshToken(refreshToken.value())
+                    .build();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     @Transactional(rollbackOn = Exception.class)
     public CreateUserResponse createUser(CreateUserRequest request) {
         User user = userMapper.toUser(request);
@@ -205,7 +244,17 @@ public class AuthServiceImpl implements IAuthService {
                     return userRepository.save(newUser);
                 }
         );
-        return handleLoginSuccess(user);
+        TokenResponse accessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN);
+        TokenResponse refreshToken = jwtUtils.generateToken(user, TokenType.REFRESH_TOKEN);
+        redisTokenService.saveToken(RedisToken.builder()
+                .jwtId(refreshToken.jwtId())
+                .userId(user.getId())
+                .expiration(refreshToken.ttlSeconds())
+                .build());
+        return LoginResponse.builder()
+                .accessToken(accessToken.value())
+                .refreshToken(refreshToken.value())
+                .build();
     }
 
     @Override

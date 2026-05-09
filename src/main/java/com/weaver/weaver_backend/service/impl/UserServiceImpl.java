@@ -4,27 +4,33 @@ import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 
 import com.weaver.weaver_backend.common.CredentialStatus;
 import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
-import com.weaver.weaver_backend.dto.response.TwoFAResponse;
+import com.weaver.weaver_backend.dto.response.user.TwoFASetupResponse;
+import com.weaver.weaver_backend.dto.response.user.TwoFAStatusResponse;
 import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
 import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
 import com.weaver.weaver_backend.entity.Notification;
 import com.weaver.weaver_backend.entity.User;
+import com.weaver.weaver_backend.entity.UserBackupCode;
 import com.weaver.weaver_backend.exception.BadRequestException;
 import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.mapper.NotificationMapper;
 import com.weaver.weaver_backend.mapper.UserMapper;
 import com.weaver.weaver_backend.repository.NotificationRepository;
+import com.weaver.weaver_backend.repository.UserBackupCodeRepository;
 import com.weaver.weaver_backend.repository.UserRepository;
 import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.service.IRedisTokenService;
 import com.weaver.weaver_backend.service.IUserService;
 import com.weaver.weaver_backend.util.JwtUtils;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,6 +54,12 @@ public class UserServiceImpl implements IUserService {
 
     private final PasswordEncoder passwordEncoder;
 
+    private final UserBackupCodeRepository userBackupCodeRepository;
+
+    private static final String CHARS =
+            "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+    private static final SecureRandom random = new SecureRandom();
 
     @Override
     public UserDetailResponse getMe(UUID userId) {
@@ -57,7 +69,7 @@ public class UserServiceImpl implements IUserService {
     }
 
     @Override
-    public TwoFAResponse setupTwoFA(UUID userId) {
+    public TwoFASetupResponse setupTwoFA(UUID userId) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -79,26 +91,60 @@ public class UserServiceImpl implements IUserService {
                 new GoogleAuthenticatorKey.Builder(secret).build()
         );
 
-        return new TwoFAResponse(qrUrl);
+        return new TwoFASetupResponse(qrUrl);
     }
 
     @Override
-    public UserDetailResponse toggle2FA(UUID userId, String OTP) {
+    @Transactional
+    public TwoFAStatusResponse toggle2FA(UUID userId, String OTP) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
         String ggSecretKey = user.getTwoFaSecret();
-        if (!ggSecretKey.isEmpty()) {
-            boolean isVerified = ggAuthService.verifyCode(ggSecretKey, OTP);
-            if (!isVerified) {
-                throw new BadRequestException("OTP invalid");
-            } else {
-                user.setTwoFaEnabled(!user.getTwoFaEnabled());
-                userRepository.save(user);
-            }
-        } else {
+        if (ggSecretKey == null || ggSecretKey.isEmpty()) {
             throw new NotFoundException("User's google secret key not found");
         }
-        return userMapper.toUserDetailResponse(user);
+        boolean isVerified = ggAuthService.verifyCode(ggSecretKey, OTP);
+        if (!isVerified) {
+            throw new BadRequestException("OTP invalid");
+        }
+        List<String> rawCodes = new ArrayList<>();
+        if(!user.getTwoFaEnabled()) {
+            rawCodes = generateBackupCodes();
+            List<UserBackupCode> backupCodes = rawCodes.stream()
+                    .map(code -> UserBackupCode.builder()
+                            .code(passwordEncoder.encode(code))
+                            .user(user)
+                            .build())
+                    .toList();
+            userBackupCodeRepository.saveAll(backupCodes);
+            user.setTwoFaEnabled(true);
+        }else {
+            userBackupCodeRepository.deleteByUser(user);
+            user.setTwoFaEnabled(false);
+        }
+        userRepository.save(user);
+
+        return new TwoFAStatusResponse(user.getTwoFaEnabled(), rawCodes);
+    }
+
+    @Override
+    @Transactional
+    public TwoFAStatusResponse disable2FAWithBackup(UUID userId, String rawBackupCode) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (!user.getTwoFaEnabled()) {
+            throw new BadRequestException("2FA is not enabled");
+        }
+        List<UserBackupCode> storedCodes = userBackupCodeRepository.findAllByUser(user);
+        UserBackupCode validCode = storedCodes.stream()
+                .filter(code -> passwordEncoder.matches(rawBackupCode, code.getCode()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Invalid backup code"));
+        userBackupCodeRepository.delete(validCode);
+        user.setTwoFaEnabled(false);
+        userBackupCodeRepository.deleteByUser(user);
+        userRepository.save(user);
+        return new TwoFAStatusResponse(false, new ArrayList<>());
     }
 
     @Override
@@ -131,4 +177,17 @@ public class UserServiceImpl implements IUserService {
         userRepository.save(user);
     }
 
+    public List<String> generateBackupCodes() {
+        List<String> codes = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            StringBuilder code =
+                    new StringBuilder();
+            for (int j = 0; j < 8; j++) {
+                code.append(CHARS.charAt(random.nextInt(CHARS.length())));
+            }
+            String formatted = code.substring(0, 4) + "-" + code.substring(4);
+            codes.add(formatted);
+        }
+        return codes;
+    }
 }
