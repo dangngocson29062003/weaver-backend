@@ -4,20 +4,21 @@ import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 
 import com.weaver.weaver_backend.common.CredentialStatus;
 import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
-import com.weaver.weaver_backend.dto.response.user.TwoFASetupResponse;
-import com.weaver.weaver_backend.dto.response.user.TwoFAStatusResponse;
-import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
-import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
+import com.weaver.weaver_backend.dto.response.user.*;
 import com.weaver.weaver_backend.entity.Notification;
 import com.weaver.weaver_backend.entity.User;
 import com.weaver.weaver_backend.entity.UserBackupCode;
+import com.weaver.weaver_backend.entity.UserSession;
 import com.weaver.weaver_backend.exception.BadRequestException;
 import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.mapper.NotificationMapper;
 import com.weaver.weaver_backend.mapper.UserMapper;
+import com.weaver.weaver_backend.mapper.UserSessionMapper;
 import com.weaver.weaver_backend.repository.NotificationRepository;
 import com.weaver.weaver_backend.repository.UserBackupCodeRepository;
 import com.weaver.weaver_backend.repository.UserRepository;
+import com.weaver.weaver_backend.repository.UserSessionRepository;
+import com.weaver.weaver_backend.service.IRedisSessionService;
 import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.service.IRedisTokenService;
 import com.weaver.weaver_backend.service.IUserService;
@@ -42,19 +43,23 @@ public class UserServiceImpl implements IUserService {
 
     private final UserMapper userMapper;
 
+    private final UserSessionMapper userSessionMapper;
+
     private final NotificationRepository notificationRepository;
 
     private final NotificationMapper notificationMapper;
 
     private final GoogleAuthenticatorService ggAuthService;
 
-    private final JwtUtils jwtUtils;
-
-    private final IRedisTokenService redisTokenService;
-
     private final PasswordEncoder passwordEncoder;
 
     private final UserBackupCodeRepository userBackupCodeRepository;
+
+    private final UserSessionRepository userSessionRepository;
+
+    private final IRedisSessionService redisSessionService;
+
+    private final IRedisTokenService redisTokenService;
 
     private static final String CHARS =
             "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -154,6 +159,14 @@ public class UserServiceImpl implements IUserService {
     }
 
     @Override
+    public List<UserSessionResponse> getSessions(UUID userId, UUID currentSid) {
+        return userSessionRepository.findAllByUserId(userId)
+                .stream()
+                .map(session -> userSessionMapper.toResponse(session, currentSid))
+                .toList();
+    }
+
+    @Override
     public void changePassword(UUID userId, PasswordRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -175,6 +188,16 @@ public class UserServiceImpl implements IUserService {
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         user.setCredentialStatus(CredentialStatus.PASSWORD_SET);
         userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void revokeSession(UUID sessionId) {
+        UserSession session = userSessionRepository.findById(sessionId).orElseThrow(() -> new NotFoundException("Session not found"));
+        session.setIsRevoked(true);
+        userSessionRepository.save(session);
+        redisSessionService.revokeSession(sessionId.toString());
+        redisTokenService.deleteAllBySessionId(sessionId);
     }
 
     public List<String> generateBackupCodes() {
