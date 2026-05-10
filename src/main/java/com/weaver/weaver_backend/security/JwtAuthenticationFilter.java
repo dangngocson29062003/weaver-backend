@@ -43,7 +43,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (token != null) {
                 Claims claims = jwtUtils.extractClaims(token);
                 String jwtId = jwtUtils.getJwtId(claims);
-                if (!jwtUtils.isTokenBlacklisted(jwtId)) {
+                UUID sessionId = jwtUtils.getSessionId(claims);
+                if (!jwtUtils.isTokenBlacklisted(jwtId) && !jwtUtils.isSessionRevoked(String.valueOf(sessionId))) {
                     TokenType tokenType = jwtUtils.getType(claims);
                     if (tokenType != TokenType.ACCESS_TOKEN) {
                         throw new UnauthorizedException("Invalid access token");
@@ -58,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     if (status == UserStatus.INACTIVE) {
                         throw new UnauthorizedException("User locked");
                     }
-                    AuthUserResponse authUser = new AuthUserResponse(userId, email);
+                    AuthUserResponse authUser = new AuthUserResponse(userId, email, sessionId);
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(authUser, null, null);
                     SecurityContextHolder.getContext().setAuthentication(authentication);

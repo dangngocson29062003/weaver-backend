@@ -65,6 +65,11 @@
 			<version>2.8.16</version>
 		</dependency>
 		<dependency>
+			<groupId>nl.basjes.parse.useragent</groupId>
+			<artifactId>yauaa</artifactId>
+			<version>7.32.0</version>
+		</dependency>
+		<dependency>
 			<groupId>com.warrenstrange</groupId>
 			<artifactId>googleauth</artifactId>
 			<version>1.4.0</version>

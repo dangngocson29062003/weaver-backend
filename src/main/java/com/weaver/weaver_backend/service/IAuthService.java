@@ -11,14 +11,14 @@ import java.text.ParseException;
 
 public interface IAuthService {
     CreateUserResponse createUser(CreateUserRequest request);
-    LoginResponse loginViaOAuth(LoginViaOAuthRequest request);
-    LoginResponse login(LoginRequest request);
-    LoginResponse verifyEmail(String token);
+    LoginResponse loginViaOAuth(LoginViaOAuthRequest request, String deviceId);
+    LoginResponse login(LoginRequest request, String deviceId);
+    LoginResponse verifyEmail(String token, String deviceId);
     void sendPasswordResetEmail(String email);
 
     void resetPassword(String token, String newPassword);
-    LoginResponse verifyTwoFA(String token, String OTP);
-    LoginResponse verifyBackupCode(String token, String rawBackupCode);
+    LoginResponse verifyTwoFA(String token, String OTP, String deviceId);
+    LoginResponse verifyBackupCode(String token, String rawBackupCode, String deviceId);
     LoginResponse refreshToken(String refreshToken);
     void logout(String refreshToken) throws ParseException, JOSEException;;
 }

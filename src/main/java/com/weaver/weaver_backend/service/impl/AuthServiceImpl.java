@@ -9,9 +9,7 @@ import com.weaver.weaver_backend.dto.request.rabbitmq.NotificationRequest;
 import com.weaver.weaver_backend.dto.response.TokenResponse;
 import com.weaver.weaver_backend.dto.response.auth.CreateUserResponse;
 import com.weaver.weaver_backend.dto.response.auth.LoginResponse;
-import com.weaver.weaver_backend.entity.RedisToken;
-import com.weaver.weaver_backend.entity.User;
-import com.weaver.weaver_backend.entity.UserBackupCode;
+import com.weaver.weaver_backend.entity.*;
 import com.weaver.weaver_backend.exception.BadRequestException;
 import com.weaver.weaver_backend.exception.ForbiddenException;
 import com.weaver.weaver_backend.exception.NotFoundException;
@@ -20,6 +18,8 @@ import com.weaver.weaver_backend.mapper.UserMapper;
 import com.weaver.weaver_backend.mq.RabbitMQProducer;
 import com.weaver.weaver_backend.repository.UserBackupCodeRepository;
 import com.weaver.weaver_backend.repository.UserRepository;
+import com.weaver.weaver_backend.repository.UserSessionRepository;
+import com.weaver.weaver_backend.service.IRedisSessionService;
 import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.service.IAuthService;
 import com.weaver.weaver_backend.service.IRedisTokenService;
@@ -29,13 +29,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.basjes.parse.useragent.UserAgent;
+import nl.basjes.parse.useragent.UserAgentAnalyzer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -55,14 +61,23 @@ public class AuthServiceImpl implements IAuthService {
 
     private final UserBackupCodeRepository userBackupCodeRepository;
 
+    private final UserSessionRepository userSessionRepository;
+
     private final IRedisTokenService redisTokenService;
+
+    private final IRedisSessionService redisSessionService;
 
     private final HttpServletRequest httpServletRequest;
 
     private final RabbitMQProducer rabbitMQProducer;
 
+    private final UserAgentAnalyzer userAgentAnalyzer;
+
+    @Value("${jwt.refresh-token-expiration}")
+    private long refreshTokenExpiration;
+
     @Override
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, String deviceId) {
         String email = request.email();
         String password = request.password();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
@@ -73,12 +88,18 @@ public class AuthServiceImpl implements IAuthService {
             EmailRequest emailRequest = new EmailRequest(user, EmailType.VERIFICATION_EMAIL);
             rabbitMQProducer.sendEmail(emailRequest);
         }
-        return handleLoginSuccess(user);
+        if (user.getTwoFaEnabled()) {
+            TokenResponse twoFAToken = jwtUtils.generateToken(user, TokenType.TWOFA_TOKEN, null);
+            return LoginResponse.builder()
+                    .twoFAToken(twoFAToken.value())
+                    .build();
+        }
+        return handleLoginSuccess(user, deviceId);
     }
 
     @Override
     @Transactional
-    public LoginResponse verifyEmail(String token) {
+    public LoginResponse verifyEmail(String token, String deviceId) {
         Claims claims = jwtUtils.extractClaims(token);
         String jwtId = jwtUtils.getJwtId(claims);
         if (jwtUtils.isTokenBlacklisted(jwtId)) {
@@ -104,7 +125,7 @@ public class AuthServiceImpl implements IAuthService {
         redisTokenService.saveToken(RedisToken.builder()
                 .jwtId(jwtId)
                 .userId(user.getId())
-                .expiration(remainingTime > 0 ? remainingTime : 1)
+                .expiration(remainingTime > 0 ? remainingTime / 1000 : 1)
                 .build());
         NotificationRequest notificationRequest = new NotificationRequest(user.getId(),
                 "Verified Successfully",
@@ -112,7 +133,7 @@ public class AuthServiceImpl implements IAuthService {
                 NotificationType.EMAIL_VERIFIED);
         rabbitMQProducer.notify(notificationRequest);
         log.info("User {} verified email successfully", email);
-        return handleLoginSuccess(user);
+        return handleLoginSuccess(user, deviceId);
     }
 
     @Override
@@ -151,7 +172,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
-    public LoginResponse verifyTwoFA(String token, String OTP) {
+    public LoginResponse verifyTwoFA(String token, String OTP, String deviceId) {
         try {
             Claims claims = jwtUtils.extractClaims(token);
             UUID userId = jwtUtils.getUserId(claims);
@@ -165,18 +186,7 @@ public class AuthServiceImpl implements IAuthService {
             if (!isVerified) {
                 throw new BadRequestException("OTP invalid");
             } else {
-                TokenResponse accessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN);
-                TokenResponse refreshToken = jwtUtils.generateToken(user, TokenType.REFRESH_TOKEN);
-                RedisToken redisToken = RedisToken.builder()
-                        .jwtId(refreshToken.jwtId())
-                        .userId(user.getId())
-                        .expiration(refreshToken.ttlSeconds())
-                        .build();
-                redisTokenService.saveToken(redisToken);
-                return LoginResponse.builder()
-                        .accessToken(accessToken.value())
-                        .refreshToken(refreshToken.value())
-                        .build();
+                return handleLoginSuccess(user, deviceId);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -184,7 +194,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
-    public LoginResponse verifyBackupCode(String token, String rawBackupCode) {
+    public LoginResponse verifyBackupCode(String token, String rawBackupCode, String deviceId) {
         try {
             Claims claims = jwtUtils.extractClaims(token);
             UUID userId = jwtUtils.getUserId(claims);
@@ -200,18 +210,7 @@ public class AuthServiceImpl implements IAuthService {
                     .findFirst()
                     .orElseThrow(() -> new BadRequestException("Invalid backup code"));
             userBackupCodeRepository.delete(validCode);
-            TokenResponse accessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN);
-            TokenResponse refreshToken = jwtUtils.generateToken(user, TokenType.REFRESH_TOKEN);
-            RedisToken redisToken = RedisToken.builder()
-                    .jwtId(refreshToken.jwtId())
-                    .userId(user.getId())
-                    .expiration(refreshToken.ttlSeconds())
-                    .build();
-            redisTokenService.saveToken(redisToken);
-            return LoginResponse.builder()
-                    .accessToken(accessToken.value())
-                    .refreshToken(refreshToken.value())
-                    .build();
+            return handleLoginSuccess(user, deviceId);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -236,7 +235,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
-    public LoginResponse loginViaOAuth(LoginViaOAuthRequest request) {
+    public LoginResponse loginViaOAuth(LoginViaOAuthRequest request, String deviceId) {
         User user = userRepository.findByEmail(request.email()).orElseGet(() -> {
                     User newUser = userMapper.toUserFromOAuth(request);
                     newUser.setEmailVerified(true);
@@ -244,17 +243,7 @@ public class AuthServiceImpl implements IAuthService {
                     return userRepository.save(newUser);
                 }
         );
-        TokenResponse accessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN);
-        TokenResponse refreshToken = jwtUtils.generateToken(user, TokenType.REFRESH_TOKEN);
-        redisTokenService.saveToken(RedisToken.builder()
-                .jwtId(refreshToken.jwtId())
-                .userId(user.getId())
-                .expiration(refreshToken.ttlSeconds())
-                .build());
-        return LoginResponse.builder()
-                .accessToken(accessToken.value())
-                .refreshToken(refreshToken.value())
-                .build();
+        return handleLoginSuccess(user, deviceId);
     }
 
     @Override
@@ -262,6 +251,7 @@ public class AuthServiceImpl implements IAuthService {
         Claims refreshClaims = jwtUtils.extractClaims(refreshToken);
         TokenType tokenType = jwtUtils.getType(refreshClaims);
         UUID userId = jwtUtils.getUserId(refreshClaims);
+        UUID sessionId = jwtUtils.getSessionId(refreshClaims);
         String refreshJwtId = jwtUtils.getJwtId(refreshClaims);
         if (tokenType != TokenType.REFRESH_TOKEN) {
             throw new BadRequestException("Invalid refresh token");
@@ -272,7 +262,7 @@ public class AuthServiceImpl implements IAuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        TokenResponse newAccessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN);
+        TokenResponse newAccessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN, sessionId);
 
         return LoginResponse.builder()
                 .accessToken(newAccessToken.value())
@@ -320,27 +310,62 @@ public class AuthServiceImpl implements IAuthService {
         SecurityContextHolder.clearContext();
     }
 
-    private LoginResponse handleLoginSuccess(User user) {
-        if (user.getTwoFaEnabled()) {
-            TokenResponse twoFAToken = jwtUtils.generateToken(user, TokenType.TWOFA_TOKEN);
-            return LoginResponse.builder()
-                    .twoFAToken(twoFAToken.value())
-                    .build();
-        }
-
-        TokenResponse accessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN);
-        TokenResponse refreshToken = jwtUtils.generateToken(user, TokenType.REFRESH_TOKEN);
-
+    private LoginResponse handleLoginSuccess(User user, String deviceId) {
+        UserSession userSession = createSession(user, deviceId);
+        TokenResponse accessToken = jwtUtils.generateToken(user, TokenType.ACCESS_TOKEN, userSession.getId());
+        TokenResponse refreshToken = jwtUtils.generateToken(user, TokenType.REFRESH_TOKEN, userSession.getId());
         redisTokenService.saveToken(RedisToken.builder()
                 .jwtId(refreshToken.jwtId())
                 .userId(user.getId())
+                .sessionId(userSession.getId())
                 .expiration(refreshToken.ttlSeconds())
                 .build());
-
         return LoginResponse.builder()
                 .accessToken(accessToken.value())
                 .refreshToken(refreshToken.value())
                 .build();
     }
 
+    private UserSession createSession(User user, String deviceId) {
+        String userAgentString = httpServletRequest.getHeader("User-Agent");
+        UserAgent userAgent = userAgentAnalyzer.parse(userAgentString);
+        String browser = userAgent.getValue(UserAgent.AGENT_NAME);
+        String os = userAgent.getValue(UserAgent.OPERATING_SYSTEM_NAME);
+        String deviceType = userAgent.getValue(UserAgent.DEVICE_CLASS);
+        String ipAddress = httpServletRequest.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isBlank()) {
+            ipAddress = httpServletRequest.getRemoteAddr();
+        }
+        Optional<UserSession> existingSession = userSessionRepository
+                .findByUserAndDeviceId(user, deviceId);
+        UserSession session;
+        if (existingSession.isPresent()) {
+            session = existingSession.get();
+            session.setIpAddress(ipAddress);
+            session.setLastActive(Instant.now());
+            session.setExpiresAt(Instant.now().plus(refreshTokenExpiration, ChronoUnit.MILLIS));
+            session.setIsRevoked(false);
+        } else {
+            session = UserSession.builder()
+                    .user(user)
+                    .browser(browser)
+                    .os(os)
+                    .deviceType(deviceType)
+                    .ipAddress(ipAddress)
+                    .lastActive(Instant.now())
+                    .expiresAt(Instant.now().plus(refreshTokenExpiration, ChronoUnit.MILLIS))
+                    .deviceId(deviceId)
+                    .isRevoked(false)
+                    .build();
+        }
+        session = userSessionRepository.save(session);
+        redisSessionService.saveSession(RedisSession.builder()
+                .sessionId(session.getId().toString())
+                .userId(user.getId())
+                .revoked(false)
+                .expiration(refreshTokenExpiration / 1000)
+                .build()
+        );
+        return session;
+    }
 }

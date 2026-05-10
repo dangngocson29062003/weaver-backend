@@ -40,11 +40,20 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                         provider,
                         token.getPrincipal().getAttributes()
                 );
+        String deviceId = null;
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("device_id".equals(cookie.getName())) {
+                    deviceId = cookie.getValue();
+                    break;
+                }
+            }
+        }
         String email = userInfo.getEmail();
         String providerId = userInfo.getProviderId();
         AuthProvider providerEnum = AuthProvider.from(provider);
         LoginViaOAuthRequest oauthRequest = new LoginViaOAuthRequest(email, providerEnum, providerId);
-        LoginResponse data = authService.loginViaOAuth(oauthRequest);
+        LoginResponse data = authService.loginViaOAuth(oauthRequest,deviceId);
         Cookie refreshCookie = new Cookie("refresh_token", data.refreshToken());
         refreshCookie.setHttpOnly(true);
         refreshCookie.setSecure(false);

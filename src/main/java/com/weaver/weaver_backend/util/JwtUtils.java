@@ -4,7 +4,9 @@ import com.weaver.weaver_backend.common.TokenType;
 import com.weaver.weaver_backend.common.UserStatus;
 import com.weaver.weaver_backend.dto.response.TokenResponse;
 import com.weaver.weaver_backend.entity.User;
+import com.weaver.weaver_backend.entity.UserSession;
 import com.weaver.weaver_backend.exception.UnauthorizedException;
+import com.weaver.weaver_backend.service.IRedisSessionService;
 import com.weaver.weaver_backend.service.IRedisTokenService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -42,14 +44,14 @@ public class JwtUtils {
     @Value("${JWT_FORGOT_PASSWORD_EXPIRATION}")
     private long forgotPasswordExpiration;
     private final IRedisTokenService iRedisTokenService;
-
+    private final IRedisSessionService iRedisSessionService;
 
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public TokenResponse generateToken(User user, TokenType tokenType) {
+    public TokenResponse generateToken(User user, TokenType tokenType, UUID sessionId) {
         long expirationTime = switch (tokenType) {
             case ACCESS_TOKEN -> accessTokenExpiration;
             case REFRESH_TOKEN -> refreshTokenExpiration;
@@ -58,7 +60,7 @@ public class JwtUtils {
             case FORGOT_PASSWORD_TOKEN -> forgotPasswordExpiration;
         };
         String jwtID = UUID.randomUUID().toString();
-        String token = Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .setSubject(user.getId().toString())
                 .setId(jwtID)
                 .claim("email", user.getEmail())
@@ -66,9 +68,19 @@ public class JwtUtils {
                 .claim("verified", user.getEmailVerified())
                 .claim("status", user.getUserStatus())
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
-                .compact();
+                .setExpiration(
+                        new Date(
+                                System.currentTimeMillis()
+                                        + expirationTime
+                        )
+                );
+        if (sessionId != null && (tokenType == TokenType.ACCESS_TOKEN || tokenType == TokenType.REFRESH_TOKEN)) {
+            builder.claim(
+                    "sessionId",
+                    sessionId.toString()
+            );
+        }
+        String token = builder.signWith(getSigningKey(), SignatureAlgorithm.HS512).compact();
         return new TokenResponse(token, jwtID, expirationTime / 1000);
     }
 
@@ -98,16 +110,23 @@ public class JwtUtils {
         return UUID.fromString(claims.getSubject());
     }
 
+    public UUID getSessionId(Claims claims) {
+        return UUID.fromString(claims.get("sessionId", String.class));
+    }
+
     public String getEmail(Claims claims) {
         return claims.get("email", String.class);
     }
+
     public Boolean getVerified(Claims claims) {
         return claims.get("verified", Boolean.class);
     }
+
     public UserStatus getStatus(Claims claims) {
         String status = claims.get("status", String.class);
         return UserStatus.valueOf(status);
     }
+
     public TokenType getType(Claims claims) {
         String type = claims.get("type", String.class);
         return TokenType.valueOf(type);
@@ -125,5 +144,5 @@ public class JwtUtils {
         return iRedisTokenService.existsByJwtId(jwtId);
     }
 
-
+    public boolean isSessionRevoked(String sessionId) {return iRedisSessionService.isSessionRevoked(sessionId);}
 }

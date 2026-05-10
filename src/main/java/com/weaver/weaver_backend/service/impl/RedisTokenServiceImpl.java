@@ -7,6 +7,9 @@ import com.weaver.weaver_backend.service.IRedisTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class RedisTokenServiceImpl implements IRedisTokenService {
@@ -22,6 +25,14 @@ public class RedisTokenServiceImpl implements IRedisTokenService {
     public void deleteTokenByJwtId(String jwtId) {
         redisTokenRepository.findById(jwtId)
                 .ifPresent(redisTokenRepository::delete);
+    }
+
+    @Override
+    public void deleteAllBySessionId(UUID sessionId) {
+        List<RedisToken> tokens =
+                redisTokenRepository.findAllBySessionId(sessionId);
+
+        redisTokenRepository.deleteAll(tokens);
     }
 
     @Override
