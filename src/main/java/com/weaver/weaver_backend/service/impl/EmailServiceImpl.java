@@ -73,7 +73,7 @@ public class EmailServiceImpl implements IEmailService {
 
     @Override
     public void sendWelcomeEmail(User user) {
-        TokenResponse tokenResponse = jwtUtils.generateToken(user, TokenType.VERIFICATION_TOKEN);
+        TokenResponse tokenResponse = jwtUtils.generateToken(user, TokenType.VERIFICATION_TOKEN, null);
         String verificationUrl = clientUrl + "/email/verify?token=" + tokenResponse.value();
         Context context = new Context();
         context.setVariable("username", user.getEmail());
@@ -84,7 +84,7 @@ public class EmailServiceImpl implements IEmailService {
 
     @Override
     public void sendForgotPasswordEmail(User user) {
-        TokenResponse tokenResponse = jwtUtils.generateToken(user, TokenType.FORGOT_PASSWORD_TOKEN);
+        TokenResponse tokenResponse = jwtUtils.generateToken(user, TokenType.FORGOT_PASSWORD_TOKEN, null);
         String resetPasswordUrl = clientUrl + "/reset/password?token=" + tokenResponse.value();
         Context context = new Context();
         context.setVariable("username", user.getEmail());

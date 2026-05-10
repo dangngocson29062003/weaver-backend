@@ -4,6 +4,10 @@ import com.weaver.weaver_backend.entity.RedisToken;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.UUID;
+
 @Repository
 public interface RedisTokenRepository extends CrudRepository<RedisToken, String> {
+    List<RedisToken> findAllBySessionId(UUID sessionId);
 }

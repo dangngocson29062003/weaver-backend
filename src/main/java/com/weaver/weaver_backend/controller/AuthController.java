@@ -31,8 +31,8 @@ public class AuthController {
     private final SpringTemplateEngine templateEngine;
 
     @PostMapping("/login")
-    ApiResponse<LoginResponse> login(@RequestBody @Valid LoginRequest request, HttpServletResponse response) {
-        LoginResponse data = iAuthService.login(request);
+    ApiResponse<LoginResponse> login(@RequestBody @Valid LoginRequest request, @CookieValue("device_id") String deviceId, HttpServletResponse response) {
+        LoginResponse data = iAuthService.login(request, deviceId);
         // REQUIRE 2FA
         if (data.twoFAToken() != null) {
             Cookie mfaCookie =
@@ -66,8 +66,11 @@ public class AuthController {
     }
 
     @PostMapping("/2fa")
-    ApiResponse<LoginResponse> verifyTwoFA(HttpServletResponse response, @RequestParam String otp, @CookieValue("mfa_token") String token) {
-        LoginResponse data = iAuthService.verifyTwoFA(token, otp);
+    ApiResponse<LoginResponse> verifyTwoFA(HttpServletResponse response,
+                                           @RequestParam String otp,
+                                           @CookieValue("mfa_token") String token,
+                                           @CookieValue("device_id") String deviceId) {
+        LoginResponse data = iAuthService.verifyTwoFA(token, otp, deviceId);
         Cookie refreshToken = new Cookie("refresh_token", data.refreshToken());
         refreshToken.setHttpOnly(true); // Prevents JavaScript from accessing the cookie (XSS protection)
         refreshToken.setSecure(false); // Change to true in production
@@ -88,8 +91,11 @@ public class AuthController {
     }
 
     @PostMapping("/2fa/verify-backup")
-    ApiResponse<LoginResponse> verifyBackupCode(HttpServletResponse response, @RequestParam String backupCode, @CookieValue("mfa_token") String token) {
-        LoginResponse data = iAuthService.verifyBackupCode(token, backupCode);
+    ApiResponse<LoginResponse> verifyBackupCode(HttpServletResponse response,
+                                                @RequestParam String backupCode,
+                                                @CookieValue("mfa_token") String token,
+                                                @CookieValue("device_id") String deviceId) {
+        LoginResponse data = iAuthService.verifyBackupCode(token, backupCode, deviceId);
         Cookie refreshToken = new Cookie("refresh_token", data.refreshToken());
         refreshToken.setHttpOnly(true); // Prevents JavaScript from accessing the cookie (XSS protection)
         refreshToken.setSecure(false); // Change to true in production
@@ -108,6 +114,7 @@ public class AuthController {
                 .data(data)
                 .build();
     }
+
     @PostMapping("/register")
     ApiResponse<CreateUserResponse> createUser(@RequestBody @Valid CreateUserRequest request) {
         var data = iAuthService.createUser(request);
@@ -119,8 +126,9 @@ public class AuthController {
     }
 
     @GetMapping("/verify-email")
-    public ApiResponse<LoginResponse> verifyEmail(@RequestParam("token") String token) {
-        LoginResponse data = iAuthService.verifyEmail(token);
+    public ApiResponse<LoginResponse> verifyEmail(@RequestParam("token") String token,
+                                                  @CookieValue("device_id") String deviceId) {
+        LoginResponse data = iAuthService.verifyEmail(token, deviceId);
         return ApiResponse.success(data, "Account verified and logged in successfully!");
     }
 
@@ -145,18 +153,18 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ApiResponse<LoginResponse> sendPasswordResetEmail(@Valid
-                                                             @NotBlank(message = "Email is required")
-                                                             @Email(message = "Invalid email address")
-                                                             @RequestParam String email) {
+    public ApiResponse<Void> sendPasswordResetEmail(@Valid
+                                                    @NotBlank(message = "Email is required")
+                                                    @Email(message = "Invalid email address")
+                                                    @RequestParam String email) {
 
         iAuthService.sendPasswordResetEmail(email);
         return ApiResponse.success(null, "Send password reset email successfully!");
     }
 
     @PostMapping("/reset-password")
-    public ApiResponse<LoginResponse> resetPassword(@RequestParam("token") String token,
-                                                    @Valid @RequestBody PasswordResetRequest request) {
+    public ApiResponse<Void> resetPassword(@RequestParam("token") String token,
+                                           @Valid @RequestBody PasswordResetRequest request) {
         iAuthService.resetPassword(token, request.password());
         return ApiResponse.success(null, "Reset password successfully!");
     }
