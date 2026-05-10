@@ -2,11 +2,8 @@ package com.weaver.weaver_backend.controller;
 
 import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
 import com.weaver.weaver_backend.dto.response.ApiResponse;
-import com.weaver.weaver_backend.dto.response.user.TwoFASetupResponse;
+import com.weaver.weaver_backend.dto.response.user.*;
 import com.weaver.weaver_backend.dto.response.auth.AuthUserResponse;
-import com.weaver.weaver_backend.dto.response.user.TwoFAStatusResponse;
-import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
-import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
 import com.weaver.weaver_backend.service.IUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -25,6 +23,18 @@ public class UserController {
     ApiResponse<UserDetailResponse> getMe(@AuthenticationPrincipal AuthUserResponse authUserResponse) {
         UserDetailResponse data = iUserService.getMe(authUserResponse.id());
         return ApiResponse.success(data, "User info retrieved successfully");
+    }
+
+    @GetMapping("/sessions")
+    ApiResponse<List<UserSessionResponse>> getSessions(@AuthenticationPrincipal AuthUserResponse authUserResponse) {
+        List<UserSessionResponse> data = iUserService.getSessions(authUserResponse.id(), authUserResponse.sessionId());
+        return ApiResponse.success(data, "Get sessions successfully");
+    }
+
+    @PostMapping("/sessions/revoke")
+    ApiResponse<Void> revokeSession(@AuthenticationPrincipal AuthUserResponse authUserResponse, @RequestParam UUID sessionId) {
+        iUserService.revokeSession(sessionId);
+        return ApiResponse.success(null, "Revoke sessions successfully");
     }
 
     @GetMapping("/notifications")
