@@ -61,6 +61,7 @@ jwt:
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
   two-fa-expiration: ${JWT_TWO_FA_EXPIRATION}
   verification-expiration: ${JWT_VERIFICATION_EXPIRATION}
+  forgot-password-expiration: ${JWT_FORGOT_PASSWORD_EXPIRATION}
 app:
   client-url: ${WEB_CLIENT_URL}
   server-url: ${WEB_SERVER_URL}

@@ -37,6 +37,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import static com.weaver.weaver_backend.common.NotificationType.*;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -129,10 +130,13 @@ public class AuthServiceImpl implements IAuthService {
                 .userId(user.getId())
                 .expiration(remainingTime > 0 ? remainingTime / 1000 : 1)
                 .build());
-        NotificationRequest notificationRequest = new NotificationRequest(user.getId(),
-                "Verified Successfully",
-                "Welcome to WEAVER! Your email is verified successfully",
-                NotificationType.EMAIL_VERIFIED);
+
+        NotificationRequest notificationRequest = NotificationRequest.builder()
+                .userId(userId)
+                .title("Verified Successfully")
+                .message("Welcome to WEAVER! Your email is verified successfully")
+                .type(EMAIL_VERIFIED)
+                .build();
         rabbitMQProducer.notify(notificationRequest);
         log.info("User {} verified email successfully", email);
         Optional<UserSession> existingSession = userSessionService.getSessionByUserAndSessionId(user, deviceId);
@@ -168,10 +172,12 @@ public class AuthServiceImpl implements IAuthService {
                 .userId(user.getId())
                 .expiration(remainingTime > 0 ? remainingTime : 1)
                 .build());
-        NotificationRequest notificationRequest = new NotificationRequest(user.getId(),
-                "Changed Password Successfully",
-                "You recently changed password",
-                NotificationType.CHANGE_PASSWORD);
+
+        NotificationRequest notificationRequest = NotificationRequest.builder()
+                .type(CHANGE_PASSWORD)
+                .title("Changed Password Successfully")
+                .message("Your password was changed successfully")
+                .build();
         rabbitMQProducer.notify(notificationRequest);
     }
 

@@ -4,6 +4,7 @@ package com.weaver.weaver_backend.service;
 import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
 import com.weaver.weaver_backend.dto.response.user.*;
 
+
 import java.util.List;
 import java.util.UUID;
 
@@ -16,7 +17,7 @@ public interface IUserService {
 
     TwoFAStatusResponse disable2FAWithBackup(UUID userId, String rawBackupCode);
 
-    List<NotificationResponse>  getNotifications(UUID userId);
+//    List<NotificationResponse>  getNotifications(UUID userId);
 
     List<UserSessionResponse> getSessions(UUID userId, UUID currentSid);
 
