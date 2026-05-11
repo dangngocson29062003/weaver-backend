@@ -33,8 +33,14 @@ public class UserController {
 
     @PostMapping("/sessions/revoke")
     ApiResponse<Void> revokeSession(@AuthenticationPrincipal AuthUserResponse authUserResponse, @RequestParam UUID sessionId) {
-        iUserService.revokeSession(sessionId);
+        iUserService.revokeSession(authUserResponse.id(), sessionId);
         return ApiResponse.success(null, "Revoke sessions successfully");
+    }
+
+    @PostMapping("/sessions/trust")
+    ApiResponse<Boolean> trustDevice(@AuthenticationPrincipal AuthUserResponse authUserResponse, @RequestParam UUID sessionId, @RequestParam String otp) {
+        boolean isTrusted = iUserService.toggleTrustDevice(authUserResponse.id(), sessionId, otp);
+        return ApiResponse.success(isTrusted, isTrusted ? "Device trust activated" : "Device trust revoked");
     }
 
     @GetMapping("/notifications")

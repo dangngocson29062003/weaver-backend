@@ -113,7 +113,7 @@ public class UserServiceImpl implements IUserService {
             throw new BadRequestException("OTP invalid");
         }
         List<String> rawCodes = new ArrayList<>();
-        if(!user.getTwoFaEnabled()) {
+        if (!user.getTwoFaEnabled()) {
             rawCodes = generateBackupCodes();
             List<UserBackupCode> backupCodes = rawCodes.stream()
                     .map(code -> UserBackupCode.builder()
@@ -123,7 +123,7 @@ public class UserServiceImpl implements IUserService {
                     .toList();
             userBackupCodeRepository.saveAll(backupCodes);
             user.setTwoFaEnabled(true);
-        }else {
+        } else {
             userBackupCodeRepository.deleteByUser(user);
             user.setTwoFaEnabled(false);
         }
@@ -192,12 +192,46 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     @Transactional
-    public void revokeSession(UUID sessionId) {
-        UserSession session = userSessionRepository.findById(sessionId).orElseThrow(() -> new NotFoundException("Session not found"));
+    public void revokeSession(UUID sessionId, UUID userId) {
+        UserSession session = userSessionRepository.findByIdAndUserId(sessionId, userId).orElseThrow(() -> new NotFoundException("Session not found"));
         session.setIsRevoked(true);
         userSessionRepository.save(session);
         redisSessionService.revokeSession(sessionId.toString());
         redisTokenService.deleteAllBySessionId(sessionId);
+    }
+
+    @Override
+    @Transactional
+    public boolean toggleTrustDevice(UUID userId, UUID sessionId, String otp) {
+        UserSession session = userSessionRepository.findByIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new NotFoundException("Session not found"));
+
+        if (Boolean.TRUE.equals(session.getIsRevoked())) {
+            throw new BadRequestException("Cannot toggle trust status for a revoked session");
+        }
+        if (Boolean.TRUE.equals(session.getIsTrusted())) {
+            session.setIsTrusted(false);
+        }
+        else {
+            if (otp == null || otp.isEmpty()) {
+                throw new BadRequestException("OTP is required to trust this device");
+            }
+
+            String ggSecretKey = session.getUser().getTwoFaSecret();
+            if (ggSecretKey == null || ggSecretKey.isEmpty()) {
+                throw new BadRequestException("2FA not configured");
+            }
+
+            if (!ggAuthService.verifyCode(ggSecretKey, otp)) {
+                throw new BadRequestException("OTP invalid");
+            }
+            session.setIsTrusted(true);
+        }
+
+        UserSession updatedSession = userSessionRepository.save(session);
+
+
+        return updatedSession.getIsTrusted();
     }
 
     public List<String> generateBackupCodes() {
