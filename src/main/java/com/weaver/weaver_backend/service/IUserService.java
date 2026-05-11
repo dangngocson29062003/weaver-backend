@@ -22,5 +22,7 @@ public interface IUserService {
 
     void changePassword(UUID userId, PasswordRequest request);
 
-    void revokeSession(UUID sessionId);
+    void revokeSession(UUID userId, UUID sessionId);
+
+    boolean toggleTrustDevice(UUID userId, UUID sessionId, String OTP);
 }

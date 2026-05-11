@@ -13,6 +13,7 @@ public record UserSessionResponse(
         String deviceType,
         String ipAddress,
         Instant lastActive,
+        Boolean isTrusted,
         boolean isCurrent,
         boolean isExpired
 ) {
