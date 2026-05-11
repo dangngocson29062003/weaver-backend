@@ -2,11 +2,13 @@ package com.weaver.weaver_backend.controller;
 
 import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
 import com.weaver.weaver_backend.dto.response.ApiResponse;
+import com.weaver.weaver_backend.dto.response.PageResponse;
 import com.weaver.weaver_backend.dto.response.user.TwoFASetupResponse;
 import com.weaver.weaver_backend.dto.response.auth.AuthUserResponse;
 import com.weaver.weaver_backend.dto.response.user.TwoFAStatusResponse;
 import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
 import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
+import com.weaver.weaver_backend.service.INotificationService;
 import com.weaver.weaver_backend.service.IUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     private final IUserService iUserService;
+    private final INotificationService iNotificationService;
 
     @GetMapping("/me")
     ApiResponse<UserDetailResponse> getMe(@AuthenticationPrincipal AuthUserResponse authUserResponse) {
@@ -27,11 +30,6 @@ public class UserController {
         return ApiResponse.success(data, "User info retrieved successfully");
     }
 
-    @GetMapping("/notifications")
-    ApiResponse<List<NotificationResponse>> getNotifications(@AuthenticationPrincipal AuthUserResponse authUserResponse) {
-        List<NotificationResponse> data = iUserService.getNotifications(authUserResponse.id());
-        return ApiResponse.success(data, "Get notifications successfully");
-    }
 
     @PatchMapping("/password")
     ApiResponse<Void> changePassword(@AuthenticationPrincipal AuthUserResponse authUserResponse, @Valid @RequestBody PasswordRequest request) {

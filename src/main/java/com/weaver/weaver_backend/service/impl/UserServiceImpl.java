@@ -1,33 +1,31 @@
 package com.weaver.weaver_backend.service.impl;
 
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
-
 import com.weaver.weaver_backend.common.CredentialStatus;
+import com.weaver.weaver_backend.dto.request.rabbitmq.NotificationRequest;
 import com.weaver.weaver_backend.dto.request.user.PasswordRequest;
 import com.weaver.weaver_backend.dto.response.user.TwoFASetupResponse;
 import com.weaver.weaver_backend.dto.response.user.TwoFAStatusResponse;
-import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
 import com.weaver.weaver_backend.dto.response.user.UserDetailResponse;
-import com.weaver.weaver_backend.entity.Notification;
 import com.weaver.weaver_backend.entity.User;
 import com.weaver.weaver_backend.entity.UserBackupCode;
 import com.weaver.weaver_backend.exception.BadRequestException;
 import com.weaver.weaver_backend.exception.NotFoundException;
-import com.weaver.weaver_backend.mapper.NotificationMapper;
 import com.weaver.weaver_backend.mapper.UserMapper;
+import com.weaver.weaver_backend.mq.RabbitMQProducer;
 import com.weaver.weaver_backend.repository.NotificationRepository;
 import com.weaver.weaver_backend.repository.UserBackupCodeRepository;
 import com.weaver.weaver_backend.repository.UserRepository;
-import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.service.IRedisTokenService;
 import com.weaver.weaver_backend.service.IUserService;
+import com.weaver.weaver_backend.service.other.GoogleAuthenticatorService;
 import com.weaver.weaver_backend.util.JwtUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import static  com.weaver.weaver_backend.common.NotificationType.*;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -44,7 +42,7 @@ public class UserServiceImpl implements IUserService {
 
     private final NotificationRepository notificationRepository;
 
-    private final NotificationMapper notificationMapper;
+    private final RabbitMQProducer rabbitMQProducer;
 
     private final GoogleAuthenticatorService ggAuthService;
 
@@ -118,7 +116,12 @@ public class UserServiceImpl implements IUserService {
                     .toList();
             userBackupCodeRepository.saveAll(backupCodes);
             user.setTwoFaEnabled(true);
+
+            NotificationRequest request = getRequestBasedOnVerifyStatus(userId, !user.getTwoFaEnabled());
+            rabbitMQProducer.notify(request);
         }else {
+            NotificationRequest request = getRequestBasedOnVerifyStatus(userId, true);
+            rabbitMQProducer.notify(request);
             userBackupCodeRepository.deleteByUser(user);
             user.setTwoFaEnabled(false);
         }
@@ -141,17 +144,19 @@ public class UserServiceImpl implements IUserService {
                 .findFirst()
                 .orElseThrow(() -> new BadRequestException("Invalid backup code"));
         userBackupCodeRepository.delete(validCode);
+        NotificationRequest request = getRequestBasedOnVerifyStatus(userId, !user.getTwoFaEnabled());
+        rabbitMQProducer.notify(request);
         user.setTwoFaEnabled(false);
         userBackupCodeRepository.deleteByUser(user);
         userRepository.save(user);
         return new TwoFAStatusResponse(false, new ArrayList<>());
     }
 
-    @Override
-    public List<NotificationResponse> getNotifications(UUID userId) {
-        List<Notification> notifications = notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(userId);
-        return notificationMapper.toResponseList(notifications);
-    }
+//    @Override
+//    public List<NotificationResponse> getNotifications(UUID userId) {
+//        List<Notification> notifications = notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(userId);
+//        return notificationMapper.toResponseList(notifications);
+//    }
 
     @Override
     public void changePassword(UUID userId, PasswordRequest request) {
@@ -189,5 +194,26 @@ public class UserServiceImpl implements IUserService {
             codes.add(formatted);
         }
         return codes;
+    }
+
+    private NotificationRequest getRequestBasedOnVerifyStatus(UUID userId,boolean isEnabled) {
+        NotificationRequest notificationRequest = null;
+        if(isEnabled) {
+            notificationRequest = NotificationRequest.builder()
+                    .type(TWO_FACTOR_DISABLED)
+                    .title("Two-Factor Authentication Disabled")
+                    .message("Your two-factor authentication has been disabled successfully.")
+                    .userId(userId)
+                    .build();
+        }else {
+            notificationRequest = NotificationRequest.builder()
+                    .type(TWO_FACTOR_ENABLED)
+                    .title("Two-Factor Authentication Enabled")
+                    .message("Your two-factor authentication has been enabled successfully.")
+                    .userId(userId)
+                    .build();
+        }
+
+        return notificationRequest;
     }
 }

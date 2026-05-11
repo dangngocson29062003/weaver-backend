@@ -39,7 +39,7 @@ public class JwtUtils {
     @Value("${jwt.verification-expiration}")
     private long verificationExpiration;
 
-    @Value("${JWT_FORGOT_PASSWORD_EXPIRATION}")
+    @Value("${jwt.forgot-password-expiration}")
     private long forgotPasswordExpiration;
     private final IRedisTokenService iRedisTokenService;
 
