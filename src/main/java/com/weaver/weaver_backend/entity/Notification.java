@@ -3,15 +3,15 @@ package com.weaver.weaver_backend.entity;
 import com.weaver.weaver_backend.common.NotificationType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "notifications")
 @Getter
 @Setter
@@ -24,6 +24,7 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Builder.Default
     @OneToMany(mappedBy = "notification", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<NotificationUser> recipients = new ArrayList<>();
 
@@ -40,6 +41,7 @@ public class Notification {
     private NotificationType type;
 
     @CreatedDate
+    @Column(name = "created_At", updatable = false)
     private LocalDateTime createdAt;
 
     public void addRecipients(User user) {

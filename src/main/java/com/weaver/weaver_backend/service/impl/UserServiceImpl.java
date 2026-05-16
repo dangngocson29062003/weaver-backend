@@ -124,8 +124,10 @@ public class UserServiceImpl implements IUserService {
                     .toList();
             userBackupCodeRepository.saveAll(backupCodes);
             user.setTwoFaEnabled(true);
-        }else {
             NotificationRequest request = getRequestBasedOnVerifyStatus(userId, true);
+            rabbitMQProducer.notify(request);
+        }else {
+            NotificationRequest request = getRequestBasedOnVerifyStatus(userId, false);
             rabbitMQProducer.notify(request);
             userBackupCodeRepository.deleteByUser(user);
             user.setTwoFaEnabled(false);
@@ -257,16 +259,16 @@ public class UserServiceImpl implements IUserService {
         NotificationRequest notificationRequest = null;
         if(isEnabled) {
             notificationRequest = NotificationRequest.builder()
-                    .type(TWO_FACTOR_DISABLED)
-                    .title("Two-Factor Authentication Disabled")
-                    .message("Your two-factor authentication has been disabled successfully.")
+                    .type(TWO_FACTOR_ENABLED)
+                    .title("Two-Factor Authentication Enabled")
+                    .message("Your two-factor authentication has been enabled successfully.")
                     .userId(userId)
                     .build();
         }else {
             notificationRequest = NotificationRequest.builder()
-                    .type(TWO_FACTOR_ENABLED)
-                    .title("Two-Factor Authentication Enabled")
-                    .message("Your two-factor authentication has been enabled successfully.")
+                    .type(TWO_FACTOR_DISABLED)
+                    .title("Two-Factor Authentication Disabled")
+                    .message("Your two-factor authentication has been disabled successfully.")
                     .userId(userId)
                     .build();
         }

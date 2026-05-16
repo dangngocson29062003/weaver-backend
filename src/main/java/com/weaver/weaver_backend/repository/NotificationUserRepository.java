@@ -29,7 +29,7 @@ public interface NotificationUserRepository extends JpaRepository<NotificationUs
                 FROM NotificationUser nu
                 JOIN FETCH nu.notification n
                 WHERE nu.user.id = :userId
-                AND n.id = :notificationId
+                AND nu.id = :notificationId
             """)
     Optional<NotificationUser> findByIdAndUserId(
             UUID userId,

@@ -8,6 +8,7 @@ import com.weaver.weaver_backend.dto.response.user.NotificationResponse;
 import com.weaver.weaver_backend.entity.Notification;
 import com.weaver.weaver_backend.entity.NotificationUser;
 import com.weaver.weaver_backend.entity.User;
+import com.weaver.weaver_backend.exception.NotFoundException;
 import com.weaver.weaver_backend.repository.NotificationRepository;
 import com.weaver.weaver_backend.repository.NotificationUserRepository;
 import com.weaver.weaver_backend.repository.UserRepository;
@@ -17,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j(topic = "RABBIT_CONSUMER")
@@ -44,39 +46,45 @@ public class RabbitMQConsumer {
     }
 
     @RabbitListener(queues = RabbitConfiguration.NOTI_QUEUE)
+    @Transactional(rollbackFor = Exception.class)
     public void handleNotification(NotificationRequest request) {
-        User user = userRepository.findById(request.userId()).orElse(null);
+        User user = userRepository.findById(request.userId()).orElseThrow(() -> new NotFoundException("User not Found"));
 
-        Notification notification = Notification.builder()
-                .title(request.title())
-                .actionUrl(request.actionUrl())
-                .type(request.type())
-                .message(request.message())
-                .build();
+        if(user != null) {
+            Notification notification = Notification.builder()
+                    .title(request.title())
+                    .type(request.type())
+                    .actionUrl(request.actionUrl())
+                    .message(request.message())
+                    .build();
 
-        notification.addRecipients(user);
+            notification.addRecipients(user);
 
-        messagingTemplate.convertAndSendToUser(
-                request.userId().toString(),
-                "/user/queue/notifications",
-                NotificationResponse.builder()
-                        .isRead(false)
-                        .message(notification.getMessage())
-                        .title(notification.getTitle())
-                        .actionUrl(notification.getActionUrl())
-                        .build()
-        );
+            Notification savedNotification = notificationRepository.save(notification);
 
-        notificationRepository.save(notification);
+            messagingTemplate.convertAndSendToUser(
+                    request.userId().toString(),
+                    "/queue/notifications",
+                    NotificationResponse.builder()
+                            .id(savedNotification.getRecipients().get(0).getId())
+                            .isRead(false)
+                            .message(notification.getMessage())
+                            .title(notification.getTitle())
+                            .actionUrl(notification.getActionUrl())
+                            .createdAt(savedNotification.getCreatedAt())
+                            .build()
+            );
 
 
-        long unreadCount = notificationUserRepository.countUnreadByUserId(request.userId());
 
-        messagingTemplate.convertAndSendToUser(
-                request.userId().toString(),
-                "/user/queue/unread",
-                unreadCount
-        );
+            long unreadCount = notificationUserRepository.countUnreadByUserId(request.userId());
+
+            messagingTemplate.convertAndSendToUser(
+                    request.userId().toString(),
+                    "/queue/unread",
+                    unreadCount
+            );
+        }
 
     }
 }

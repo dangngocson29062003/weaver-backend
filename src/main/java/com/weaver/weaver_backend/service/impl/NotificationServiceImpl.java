@@ -40,9 +40,10 @@ public class NotificationServiceImpl implements INotificationService {
         PageResponse<NotificationResponse> response = PageResponse.<NotificationResponse>builder()
                 .currentPage(page)
                 .pageSize(size)
-                .totalElement(notificationPage.getTotalElements())
+                .totalElements(notificationPage.getTotalElements())
                 .totalPages(notificationPage.getTotalPages())
                 .content(content)
+                .isLast(notificationPage.isLast())
                 .build();
         return response;
     }
@@ -51,7 +52,9 @@ public class NotificationServiceImpl implements INotificationService {
     public NotificationResponse markSingleAsRead(UUID userId, long notificationId) {
         NotificationUser notificationUser = notificationUserRepository.findByIdAndUserId(userId, notificationId)
                 .orElseThrow(() -> new NotFoundException("Notification Or User Not Found"));
-
+        notificationUser.setRead(true);
+        notificationUser.setReadAt(LocalDateTime.now());
+        notificationUserRepository.save(notificationUser);
         return NotificationMapper.toNotificationResponse(notificationUser);
     }
 

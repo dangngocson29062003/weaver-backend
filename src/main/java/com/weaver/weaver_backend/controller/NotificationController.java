@@ -16,12 +16,13 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/notifications")
 public class NotificationController {
 
     private final INotificationService iNotificationService;
 
     @PatchMapping("/{id}/read")
-    public ApiResponse<NotificationResponse> markSingleAsRead(@PathVariable long id, @AuthenticationPrincipal AuthUserResponse authUserResponse) {
+    public ApiResponse<NotificationResponse> markSingleAsRead(@PathVariable("id") long id, @AuthenticationPrincipal AuthUserResponse authUserResponse) {
         var data = iNotificationService.markSingleAsRead(authUserResponse.id(),id);
         return ApiResponse.success(data, "Mark Single Notification As Read Successfully");
     }
@@ -33,7 +34,7 @@ public class NotificationController {
     }
 
 
-    @GetMapping("/notifications")
+    @GetMapping
     ApiResponse<PageResponse<NotificationResponse>> getNotifications(@AuthenticationPrincipal AuthUserResponse authUserResponse,
                                                                      @RequestParam(required = false, defaultValue = "1") int page,
                                                                      @RequestParam(required = false, defaultValue = "5") int size) {
@@ -41,7 +42,7 @@ public class NotificationController {
         return ApiResponse.success(data, "User's Notifications retrieved successfully");
     }
 
-    @GetMapping("/notifcations/unread")
+    @GetMapping("/unread")
     ApiResponse<UnreadCountResponse> getUnreadNotifications(@AuthenticationPrincipal AuthUserResponse authUserResponse) {
         var data = iNotificationService.getUnreadNotificationQuantity(authUserResponse.id());
         return ApiResponse.success(data, "Unread notifications quantity retrieved successfully");
